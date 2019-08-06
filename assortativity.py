@@ -8,7 +8,7 @@ Created on Tue Jun 4 19:44:05 2019
 import numpy as np
 import scipy.sparse as sparse
 
-def localAssort(A, M, weights=None, pr="Multiscale", weighted=True, thorndike=True,
+def localAssort(A, M, weights=None, pr="multiscale", method="weighted", thorndike=True,
                 return_extra=False, constraint=None):
     '''
     Function to compute the local assortativity in an undirected network
@@ -19,7 +19,12 @@ def localAssort(A, M, weights=None, pr="Multiscale", weighted=True, thorndike=Tr
                 then pagerank vector will be used as the weights, with
                 a restart probability given by 'pr' - None or Numpy Array, size:(n,n)
                 where row n corresponds to the weight vector of node n
-
+    pr      ->  If weights is None, value of the alpha parameter used to compute
+                the pagerank vectors - Float, between 0 and 1
+    method   -> Method used to compute the local assortativity. "weighted" computes
+                assortativity by computing the weighted Pearson correlation Coefficient.
+                "Peel" computes assortativity by standardizing the scalar values using
+                the mean and SD of the attributes (Peel et al., 2018)
     '''
 
     n = len(M)                  #Nb of nodes
@@ -51,7 +56,7 @@ def localAssort(A, M, weights=None, pr="Multiscale", weighted=True, thorndike=Tr
     if weights is None:
         #Compute weighted vector for every node in the graph
         for i in range(n):
-            if pr=="Multiscale":
+            if pr=="multiscale":
                 _,w_all[i,:],_ = calculateRWRrange(sparse.csc_matrix(A), degree, i, np.array([1]), n)
             else:
                 pi,_,_ = calculateRWRrange(sparse.csc_matrix(A), degree, i, np.array([pr]), n)
@@ -61,7 +66,7 @@ def localAssort(A, M, weights=None, pr="Multiscale", weighted=True, thorndike=Tr
     else:
         w_all = weights
 
-    if weighted==False:
+    if method is "Peel":
         #Compute the zscored values of the attributes
         x_mean = (1/(2*m)) * (np.sum(degree*M))
         x_std =  np.sqrt((1/(2*m)) * np.sum(degree * ((M - x_mean)**2)))
@@ -77,7 +82,7 @@ def localAssort(A, M, weights=None, pr="Multiscale", weighted=True, thorndike=Tr
         if constraint is not None:
             weighted_A = weighted_A * constraint
 
-        if weighted==True:
+        if method is "weighted":
             #Compute the weighted zscores
             x_mean = np.sum((np.sum(weighted_A, axis=1)*M))
             y_mean = np.sum((np.sum(weighted_A, axis=0)*M))
