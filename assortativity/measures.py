@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jun 4 19:44:05 2019
-
+Created on:        Tue Jun 4 19:44:05 2019
+Last updated on:
 @author: Vincent Bazinet
 """
 
@@ -13,19 +13,31 @@ def localAssort(A, M, weights=None, pr="multiscale", method="weighted", thorndik
     '''
     Function to compute the local assortativity in an undirected network
     INPUTS:
-    A       ->  Adjacency matrix - Numpy Array, size:(n,n)
-    M       ->  Node Properties - Numpy Array, size:(n)
-    weights ->  Weights to be use to compute the assortativity. If None,
-                then pagerank vector will be used as the weights, with
-                a restart probability given by 'pr' - None or Numpy Array, size:(n,n)
-                where row n corresponds to the weight vector of node n
-    pr      ->  If weights is None, value of the alpha parameter used to compute
-                the pagerank vectors - Float, between 0 and 1
-    method   -> Method used to compute the local assortativity. "weighted" computes
-                assortativity by computing the weighted Pearson correlation Coefficient.
-                "Peel" computes assortativity by standardizing the scalar values using
-                the mean and SD of the attributes (Peel et al., 2018)
+    A           ->  Adjacency matrix - Numpy Array, size:(n,n)
+    M           ->  Node Properties - Numpy Array, size:(n) OR Tuple of 2 Numpy Arrays, size:(n)
+    weights     ->  Weights to be use to compute the assortativity. If None,
+                    then pagerank vector will be used as the weights, with
+                    a restart probability given by 'pr' - None or Numpy Array, size:(n,n)
+                    where row n corresponds to the weight vector of node n
+    pr          ->  If weights is None, value of the alpha parameter used to compute
+                    the pagerank vectors - Float, between 0 and 1
+    method      ->  Method used to compute the local assortativity. "weighted" computes
+                    assortativity by computing the weighted Pearson correlation Coefficient.
+                    "Peel" computes assortativity by standardizing the scalar values using
+                    the mean and SD of the attributes (Peel et al., 2018)
+    thorndike   ->  Correction for possible Restriction of range in correlation computation
+                    (Thorndike equation II)
     '''
+
+    #Check if its heterogenous or not
+    if type(M) is tuple:
+        N = M[1]
+        M = M[0]
+        hetero=True
+    elif type(M) is np.ndarray:
+        hetero=False
+    else:
+        raise TypeError("Node Properties must be stored in a ndarray")
 
     n = len(M)                  #Nb of nodes
     m = np.sum(A)/2             #Nb of edges (divided by two when undirected)
@@ -83,11 +95,19 @@ def localAssort(A, M, weights=None, pr="multiscale", method="weighted", thorndik
             weighted_A = weighted_A * constraint
 
         if method is "weighted":
+
             #Compute the weighted zscores
-            x_mean = np.sum((np.sum(weighted_A, axis=1)*M))
-            y_mean = np.sum((np.sum(weighted_A, axis=0)*M))
-            x_std = np.sqrt(np.sum(np.sum(weighted_A, axis=1) * ((M - x_mean)**2)))
-            y_std = np.sqrt(np.sum(np.sum(weighted_A, axis=0) * ((M - y_mean)**2)))
+            if hetero is False:
+                x_mean = np.sum((np.sum(weighted_A, axis=1)*M))
+                y_mean = np.sum((np.sum(weighted_A, axis=0)*M))
+                x_std = np.sqrt(np.sum(np.sum(weighted_A, axis=1) * ((M - x_mean)**2)))
+                y_std = np.sqrt(np.sum(np.sum(weighted_A, axis=0) * ((M - y_mean)**2)))
+
+            else:
+                x_mean = np.sum((np.sum(weighted_A, axis=1)*M))
+                y_mean = np.sum((np.sum(weighted_A, axis=0)*N))
+                x_std = np.sqrt(np.sum(np.sum(weighted_A, axis=1) * ((M - x_mean)**2)))
+                y_std = np.sqrt(np.sum(np.sum(weighted_A, axis=0) * ((N - y_mean)**2)))
 
             x_means[i] = x_mean
             y_means[i] = y_mean
