@@ -17,13 +17,15 @@ in this repository.
 _data_               -> Folder that stores some data that is used for the small examples
 in examples.ipynb
 
+_experiments.ipynb_  -> Jupyter Notebook with experiments that I have tried in the last
+couple of days. Given the size of the datafiles sometimes necessary for running these
+experiments, these files are not stored in this repository.
+
 __EXTRA CONTENT__
 
-_experiments.ipynb_  -> Jupyter Notebook with experiments that I have tried in the last
-couple of days (in .gitignore).
-
 _notebook_experiments_ -> Folder that stores the results as well as the data necessary for
-the experiments ran in the experiments.ipynb file (in .gitignore).
+the experiments ran in the experiments.ipynb file. These results and the data is not
+directly stored in the repository. This folder is therefore part of _.gitignore_.
 
 ### NOTE
 ========================================================
