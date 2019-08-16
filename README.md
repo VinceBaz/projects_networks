@@ -14,11 +14,16 @@ _assortativity_      -> Folder that stores the package for the assortativity mea
 _examples.ipynb_     -> Jupyter Notebook with small examples of the measures contained
 in this repository.
 
+_data_               -> Folder that stores some data that is used for the small examples
+in examples.ipynb
+
+__EXTRA CONTENT__
+
 _experiments.ipynb_  -> Jupyter Notebook with experiments that I have tried in the last
-couple of days.
+couple of days (in .gitignore).
 
 _notebook_experiments_ -> Folder that stores the results as well as the data necessary for
-the experiments ran in the experiments.ipynb file
+the experiments ran in the experiments.ipynb file (in .gitignore).
 
 ### NOTE
 ========================================================
