@@ -74,7 +74,7 @@ def localAssort(A, M, weights=None, pr="multiscale", method="weighted", thorndik
                 pi,_,_ = calculateRWRrange(sparse.csc_matrix(A), degree, i, np.array([pr]), n)
                 w_all[i,:] = pi.reshape(-1)
 
-    #else, your weights are inputed by the user of the function
+    #else, your weights are inputed by the user of the functio0n
     else:
         w_all = weights
 
