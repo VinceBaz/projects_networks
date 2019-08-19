@@ -8,8 +8,9 @@ Last updated on:
 import numpy as np
 import scipy.sparse as sparse
 
-def localAssort(A, M, weights=None, pr="multiscale", method="weighted", thorndike=True,
-                return_extra=False, constraint=None):
+
+def localAssort(A, M, weights=None, pr="multiscale", method="weighted",
+                thorndike=True, return_extra=False, constraint=None):
     '''
     Function to compute the local assortativity in an undirected network
     INPUTS:
@@ -29,25 +30,25 @@ def localAssort(A, M, weights=None, pr="multiscale", method="weighted", thorndik
                     (Thorndike equation II)
     '''
 
-    #Check if its heterogenous or not
+    # Check if its heterogenous or not
     if type(M) is tuple:
         N = M[1]
         M = M[0]
-        hetero=True
+        hetero = True
     elif type(M) is np.ndarray:
-        hetero=False
+        hetero = False
     else:
         raise TypeError("Node Properties must be stored in a ndarray")
 
-    n = len(M)                  #Nb of nodes
-    m = np.sum(A)/2             #Nb of edges (divided by two when undirected)
-    degree = np.sum(A, axis=0)  #Degree of nodes (or Strength for weighted)
+    n = len(M)                  # Nb of nodes
+    m = np.sum(A)/2             # Nb of edges (divided by two when undirected)
+    degree = np.sum(A, axis=0)  # Degree of nodes (or Strength for weighted)
 
     if weights is not None:
-        #Make sure that the weights sum to 1
+        # Make sure that the weights sum to 1
         if np.all(np.sum(weights, axis=1)==1) is False:
             raise ValueError("weight vector must sum to 1")
-        #Make sure that the weights are stored in a (n,n) ndarray (if not None)
+        # Make sure that the weights are stored in a (n,n) ndarray (if not None)
         if type(weights) is np.ndarray:
             if weights.shape is not (n,n):
                 raise TypeError("weights vector must have shape (n,n)")
@@ -128,6 +129,7 @@ def localAssort(A, M, weights=None, pr="multiscale", method="weighted", thorndik
     else:
         return assort, w_all
 
+
 def globalAssort(A, M, debugInfo=False):
 
     m = np.sum(A)/2
@@ -184,7 +186,7 @@ def calculateRWRrange(A, degree, i, prs, n, trans=True, maxIter=1000):
 
     #Get the transpose
     if trans:
-        W = W.T   #W is the Markov Matrix
+        W = W.T   #W is the Markov Matrix (a.k.a. Transition Probability Matrix)
 
     oneminuspr = 1-pr
 
