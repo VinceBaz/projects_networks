@@ -134,3 +134,24 @@ la_deg_r5_er,_ = m.localAssort(r5_er, np.sum(r5_er, axis=0))
 
 np.save("notebook_experiments/results/r6_ga_deg_er.npy", ga_deg_r5_er)
 np.save("notebook_experiments/results/r6_la_deg_er.npy", la_deg_r5_er)
+
+'''
+SCRIPT #7
+Compute the local assortativity (degree) of the ER random networks generated in
+SCRIPT#1, for increasing values of alpha.
+'''
+
+r1 = np.load("notebook_experiments/data/r1_er100.npy")
+
+r7_la_pr_er = np.zeros((100,50,200))
+r7_w_pr_er = np.zeros((100,50,200,200))
+
+for i in range(100):
+    count=0
+    print(i)
+    for j in np.arange(0.02,1.01,0.02):
+        r7_la_pr_er[i,count,:],r7_w_pr_er[i,count,:,:] = m.localAssort(r1[i,:,:], np.sum(r1[i,:,:], axis=0), pr=j)
+        count+=1
+        
+np.save("notebook_experiments/results/r7_la_pr_er.npy", r7_la_pr_er)
+np.save("notebook_experiments/results/r7_w_pr_er.npy", r7_w_pr_er)
