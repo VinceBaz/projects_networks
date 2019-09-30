@@ -381,21 +381,44 @@ np.save("notebook_experiments/results/r10_newG.npy", newG)
 np.save("notebook_experiments/results/r10_la_extra_kurt.npy", r10_la_kurt)
 
 '''
-SCRIPT #11
+SCRIPT #11.0
 Generate a random Erdos-Renyi network with 1000 nodes, and a density of 0.05
 '''
 
 r11_er = nx.to_numpy_array(nx.generators.random_graphs.erdos_renyi_graph(1000, 0.05))
 r11_randNb = np.random.rand(1000)
 
+np.save("notebook_experiments/data/r11_er.npy", r11_er)
+np.save("notebook_experiments/data/r11_randNb.npy", r11_randNb)
+
+'''
+SCRIPT #11.1
+Compute local assortativity in this netork, using peel, as well as weighted method
+'''
+
+r11_er = np.load("notebook_experiments/data/r11_er.npy")
+r11_randNb = np.load("notebook_experiments/data/r11_randNb.npy")
+
 r11_la_p,_ = m.localAssort(r11_er, r11_randNb, method="Peel", thorndike=False)
 r11_la_w,w,r11_la_extra_w = m.localAssort(r11_er, r11_randNb, method="weighted", thorndike=False, return_extra=True)
 
-np.save("notebook_experiments/data/r11_er.npy", r11_er)
-np.save("notebook_experiments/data/r11_randNb.npy", r11_randNb)
+r11_la_p_deg, _ = m.localAssort(r11_er, np.sum(r11_er, axis=0), method="Peel", thorndike=False)
+r11_la_w_deg, w_deg, r11_la_extra_w_deg = m.localAssort(r11_er, np.sum(r11_er, axis=0), method="weighted", thorndike=False, return_extra=True)
+
 np.save("notebook_experiments/results/r11_la_p.npy", r11_la_p)
 np.save("notebook_experiments/results/r11_la_w.npy", r11_la_w)
 np.save("notebook_experiments/results/r11_la_extra_w.npy", r11_la_extra_w)
+np.save("notebook_experiments/results/r11_w.npy", w)
+
+np.save("notebook_experiments/results/r11_la_p_deg.npy", r11_la_p_deg)
+np.save("notebook_experiments/results/r11_la_w_deg.npy", r11_la_w_deg)
+np.save("notebook_experiments/results/r11_la_extra_w_deg.npy", r11_la_extra_w_deg)
+np.save("notebook_experiments/results/r11_w_deg.npy", w)
+
+'''
+SCRIPT #11.2
+Get the zscore distributions for each neighborhood around a node
+'''
 
 '''
 SCRIPT #12.1
@@ -428,16 +451,19 @@ Compute the local assortatvity of these random networks
 r12 = np.load("notebook_experiments/results/r12.npy")
 r12_randNb = np.load("notebook_experiments/results/r12_randNb.npy")
 
+r12_la_p = np.zeros((200,300))
 r12_la = np.zeros((200,300))
 r12_la[0,:], w = m.localAssort(r12[0,:,:], r12_randNb)
+r12_la_p[0,:], w = m.localAssort(r12[0,:,:], r12_randNb, method="Peel", thorndike=False)
 
 for i in range(1,200):
     
     print("Compute Local Ass - ",i)
     
     r12_la[i,:],_ = m.localAssort(r12[i,:,:], r12_randNb, weights=w)
-    
+    r12_la_p[i,:],_ = m.localAssort(r12[i,:,:], r12_randNb, method="Peel", thorndike=False, weights=w)
 np.save("notebook_experiments/results/r12_la.npy", r12_la)
+np.save("notebook_experiments/results/r12_la_p.npy", r12_la_p)
 
 '''
 #SCRIPT #13
@@ -468,3 +494,67 @@ for i in range(200):
     r13_la[i,:],_ = m.localAssort(r13[i,:,:], r12_randNb)
 
 np.save("notebook_experiments/results/r13_la.npy", r13_la)
+
+'''
+SCRIPT #14
+Use the 1000 nodes ER network from script #11, and randomly swap edges to get random
+networks that have global assortativities of 
+->0.10
+->0.20
+->0.30
+->0.40
+->0.50
+'''
+
+r11_er = np.load("notebook_experiments/data/r11_er.npy")
+r11_randNb = np.load("notebook_experiments/data/r11_randNb.npy")
+
+r14 = np.zeros((5,1000,1000))
+
+c=0
+for i in np.arange(0.10,0.51,0.10):
+    print(c)
+    r14[c,:,:] = tools.assort_preserv_swap(r11_er, r11_randNb, i)[0]
+    c+=1
+
+np.save("notebook_experiments/data/r14.npy", r14)
+
+'''
+SCRIPT #15
+Use the 1000 nodes ER network from script #11, and randomly swap edges to get random
+a random network that has a maximum amount of global assortativity
+'''
+
+r11_er = np.load("notebook_experiments/data/r11_er.npy")
+r11_randNb = np.load("notebook_experiments/data/r11_randNb.npy")
+
+r15 = np.zeros((1000,1000))
+
+r15 = tools.assort_preserv_swap(r11_er, r11_randNb, 0.70, verbose=True)[0]
+
+np.save("notebook_experiments/data/r15.npy", r15)
+
+r15_2 = tools.assort_preserv_swap(r15, r11_randNb, 0.80, verbose=True)[0]
+
+np.save("notebook_experiments/data/r15_2.npy", r15_2)
+
+'''
+SCRIPT #16
+Use the 1000 nodes ER network from script #11, and randomly swap edges to get 
+a random network that has a maximum amount of global assortativity (for degree)
+'''
+
+r11_er = np.load("notebook_experiments/data/r11_er.npy")
+r11_randNb = np.load("notebook_experiments/data/r11_randNb.npy")
+
+r16 = np.zeros((5,1000,1000))
+
+r16[0,:,:] = r11_er.copy()
+
+c=1
+for i in np.arange(0.20,0.81,0.20):
+    
+    r16[c,:,:] = tools.assort_preserv_swap(r16[c-1,:,:], np.sum(r11_er, axis=0), i, verbose=True)[0]
+    c+=1
+    
+np.save("notebook_experiments/data/r16.npy", r16)

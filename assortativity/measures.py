@@ -7,11 +7,11 @@ Last updated on:
 
 import numpy as np
 import scipy.sparse as sparse
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, rankdata
 
 
 def localAssort(A, M, weights=None, pr="multiscale", method="weighted",
-                thorndike=True, return_extra=False,
+                thorndike=False, return_extra=False,
                 constraint=None):
     '''
     Function to compute the local assortativity in an undirected network
@@ -72,7 +72,8 @@ def localAssort(A, M, weights=None, pr="multiscale", method="weighted",
     w_all = np.zeros((n, n))
 
     # Initialize arrays to store extra information, for when return_extra==True
-    extra_info = np.zeros((n), dtype=object)
+    if return_extra is True:
+        extra_info = np.zeros((n), dtype=object)
 
     # If weights==None, compute weights using pagerank vector,
     # with given 'pr' value
@@ -109,10 +110,10 @@ def localAssort(A, M, weights=None, pr="multiscale", method="weighted",
         if constraint is not None:
             weighted_A = weighted_A * constraint
 
-        if method == "weighted":
+        x_weights = np.sum(weighted_A, axis=1)
+        y_weights = np.sum(weighted_A, axis=0)
 
-            x_weights = np.sum(weighted_A, axis=1)
-            y_weights = np.sum(weighted_A, axis=0)
+        if method == "weighted":
 
             # Compute the weighted zscores
             if hetero is False:
@@ -121,36 +122,31 @@ def localAssort(A, M, weights=None, pr="multiscale", method="weighted",
                 x_std = np.sqrt(np.sum(x_weights * ((M - x_mean)**2)))
                 y_std = np.sqrt(np.sum(y_weights * ((M - y_mean)**2)))
 
+                assort[i] = np.sum(weighted_A * (M-x_mean)[:, np.newaxis] * (M-y_mean)[np.newaxis, :], axis=None)/(x_std*y_std)
+
             else:
                 x_mean = np.sum(x_weights*M)
                 y_mean = np.sum(y_weights*N)
                 x_std = np.sqrt(np.sum(x_weights * ((M - x_mean)**2)))
                 y_std = np.sqrt(np.sum(y_weights * ((N - y_mean)**2)))
 
-            extra_info[i] = {}
-            extra_info[i]["x_mean"] = x_mean
-            extra_info[i]["y_mean"] = y_mean
-            extra_info[i]["x_stds"] = x_std
-            extra_info[i]["y_stds"] = y_std
-
-            if return_extra is True:
-
-                null = np.zeros((1000))
-                for a in range(1000):
-                    x_null = np.random.choice(M, size=1000, p=x_weights)
-                    y_null = np.random.choice(M, size=1000, p=y_weights)
-                    null[a] = pearsonr(x_null, y_null)[0]
-
-                extra_info[i]["null"] = null
-                extra_info[i]["x_skew"] = np.sum(x_weights * (((M - x_mean)/x_std)**3))
-                extra_info[i]["y_skew"] = np.sum(y_weights * (((M - y_mean)/y_std)**3))
-                extra_info[i]["x_kurt"] = np.sum(x_weights * (((M - x_mean)/x_std)**4))-3
-                extra_info[i]["y_kurt"] = np.sum(y_weights * (((M - y_mean)/y_std)**4))-3
-
-            assort[i] = np.sum(weighted_A * (M-x_mean)[:, np.newaxis] * (M-y_mean)[np.newaxis, :], axis=None)/(x_std*y_std)
+                assort[i] = np.sum(weighted_A * (M-x_mean)[:, np.newaxis] * (N-y_mean)[np.newaxis, :], axis=None)/(x_std*y_std)
 
         else:
             assort[i] = np.sum(weighted_A * normed_x[:, np.newaxis] * normed_x[np.newaxis, :], axis=None)
+
+        if return_extra is True:
+
+            extra_info[i] = {}
+            extra_info[i]["x_mean"] = np.sum(x_weights*M)
+            extra_info[i]["y_mean"] = np.sum(y_weights*M)
+            extra_info[i]["x_stds"] = np.sqrt(np.sum(x_weights * ((M - x_mean)**2)))
+            extra_info[i]["y_stds"] = np.sqrt(np.sum(y_weights * ((M - y_mean)**2)))
+
+            extra_info[i]["x_skew"] = np.sum(x_weights * (((M - x_mean)/x_std)**3))
+            extra_info[i]["y_skew"] = np.sum(y_weights * (((M - y_mean)/y_std)**3))
+            extra_info[i]["x_kurt"] = np.sum(x_weights * (((M - x_mean)/x_std)**4))-3
+            extra_info[i]["y_kurt"] = np.sum(y_weights * (((M - y_mean)/y_std)**4))-3
 
     if thorndike is True:
 
@@ -166,35 +162,106 @@ def localAssort(A, M, weights=None, pr="multiscale", method="weighted",
         return assort, w_all
 
 
-def globalAssort(A, M, debugInfo=False):
+def globalAssort_fast(A, M, m, edges):
+    X = (M[:, np.newaxis]*A)[edges]
+    mean = np.mean(X, axis=None)
+    std = np.std(X, axis=None)
+    norms = (M-mean)/std
+    rglobal = np.sum(A * norms[:, np.newaxis] * norms[np.newaxis, :])
+    rglobal = rglobal/m
+
+    return rglobal
+
+
+def globalAssort(A, M, method="pearson", debugInfo=False):
     """
     Function to compute the global assortativity of a BINARY network
+    INPUTS:
+        A   -> Adjacency Matrix of the Binary Network
+        M   -> Node Properties. Can be an (n,) ndarray, an (n,p) ndarray,
+               where n is the number of nodes and p is the number of attributes
+               or a tuple of two (n,) ndarrays
+
+    RETURNS:
+        If M is a tuple or an (n,) array, returns a scalar value, corresponding
+        to the global assortativity measure of the attribute. If the shape is
+        (n,p), return a (p,p) matrix of the co-assortativity values between
+        each pair of attributes
     """
 
-    m = np.sum(A)/2
-    degree = np.sum(A, axis=1).astype(int)
-    edge_M = np.zeros((2*int(m)))
-    c = 0
-    for i in range(len(M)):
-        for j in range(degree[i]):
-            edge_M[c] = M[i]
-            c += 1
+    if type(M) is np.ndarray:
+        n = M.shape[0]
 
-    x_mean = (1/(2*m)) * (np.sum((np.asarray(np.sum(A, axis=1)).reshape(-1)*M)))
-    M_norm = (M-x_mean)/np.std(edge_M)
+        if M.ndim == 1:
 
-    np.sum(A, axis=1)
+            if method == "spearman":
+                # Rank the attribute values
+                M = rankdata(M)
 
-    rglobal = np.sum(A * M_norm[:, np.newaxis] * M_norm[np.newaxis, :])
+            X = M[:, np.newaxis]*A
+            mean = np.mean(X[A == 1], axis=None)
+            std = np.std(X[A == 1], axis=None)
+            norms = (M-mean)/std
+            rglobal = np.sum(A * norms[:, np.newaxis] * norms[np.newaxis, :])
 
-    denominator = 2*m
+        elif M.ndim == 2:
 
+            p = M.shape[1]
+
+            if method == "spearman":
+                # Rank the attribute values
+                for i in range(p):
+                    M[:, i] = rankdata(M[:, i])
+
+            X = np.zeros((n, n, p))
+            Y = np.zeros((n, n, p))
+            zX = np.zeros((n, p))
+            zY = np.zeros((n, p))
+            for i in range(p):
+                X[:, :, i] = (M[:, i][:, np.newaxis])*A
+                Y[:, :, i] = A*(M[:, i][:, np.newaxis])
+                mX = np.mean(X[:, :, i][A == 1], axis=None)
+                sdX = np.std(X[:, :, i][A == 1], axis=None)
+                mY = np.mean(Y[:, :, i][A == 1], axis=None)
+                sdY = np.std(Y[:, :, i][A == 1], axis=None)
+                zX[:, i] = (M[:, i]-mX)/sdX
+                zY[:, i] = (M[:, i]-mY)/sdY
+
+            rglobal = np.zeros((p, p))
+            for i in range(p):
+                for j in range(p):
+                    rglobal[i, j] = np.sum(A * zX[:, i][:, np.newaxis] * zY[:, j][np.newaxis, :])
+
+        else:
+            raise TypeError("M must be of shape (n,) or (n,p)")
+
+    elif type(M) is tuple:
+        N = M[1]
+        M = M[0]
+
+        if method == "spearman":
+            # Rank the attribute values
+            M = rankdata(M)
+            N = rankdata(N)
+
+        X = M[:, np.newaxis]*A
+        Y = A*N[np.newaxis, :]
+        mX = np.mean(X[A == 1], axis=None)
+        sdX = np.std(X[A == 1], axis=None)
+        mY = np.mean(Y[A == 1], axis=None)
+        sdY = np.std(Y[A == 1], axis=None)
+        zX = (M-mX)/sdX
+        zY = (N-mY)/sdY
+
+        rglobal = np.sum(A * zX[:, np.newaxis] * zY[np.newaxis, :])
+
+    denominator = np.sum(A)
     rglobal = rglobal/denominator
 
     if debugInfo is False:
         return rglobal
     else:
-        return rglobal, x_mean, M_norm, denominator
+        return rglobal, mean, norms, denominator
 
 
 def weightedAssort(A, M):
@@ -254,7 +321,7 @@ def calculateRWRrange(A, degree, i, prs, n, maxIter=1000):
     D = sparse.diags(1./degree, 0, format='csc')
     W = D.dot(A)
 
-    #Initialize parameters
+    # Initialize parameters
     diff = 1
     it = 1
     F = np.zeros(n)
@@ -265,7 +332,7 @@ def calculateRWRrange(A, degree, i, prs, n, maxIter=1000):
     T = F.copy()
 
     # Get the transpose
-    W = W.T   #W is the Markov Matrix (a.k.a. Transition Probability Matrix)
+    W = W.T   # W is the Markov Matrix (a.k.a. Transition Probability Matrix)
 
     oneminuspr = 1-pr
 
@@ -285,21 +352,11 @@ def calculateRWRrange(A, degree, i, prs, n, maxIter=1000):
     return Fall, T, it
 
 
-def random_walk_weighted(A, pr, seed, maxIter=1000):
-
-    weights = np.zeros((len(A)))
-
-    strength = np.sum(A, axis=1)
-
-    n=seed
-    for t in range(maxIter):
-        probs = A[n,:]/strength[n]
-
 def thorndike_correct(A, M, assortT, m, x_stds):
     x_mean = (1/(2*m)) * (np.sum(np.sum(A, axis=0)*M))
-    x_std =  np.sqrt((1/(2*m)) * np.sum(np.sum(A, axis=0) * ((M - x_mean)**2)))
+    x_std = np.sqrt((1/(2*m)) * np.sum(np.sum(A, axis=0) * ((M - x_mean)**2)))
 
-    thorndike=np.zeros((len(M)))
+    thorndike = np.zeros((len(M)))
     for i in range(len(M)):
         thorndike[i] = x_std*assortT[i]/((((x_std**2)*(assortT[i]**2))+(x_stds[i]**2)-((x_stds[i]**2)*(assortT[i]**2)))**(1/2))
 
