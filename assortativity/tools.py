@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from . import measures as m
 import random
-
+from mpl_toolkits.mplot3d import Axes3D
 
 def plot_gradient(partition, coords, label=None, min_color=None,
                   max_color=None, colormap="viridis", colorbar=True, size=500,
