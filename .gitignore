@@ -2,9 +2,9 @@
 __pycache__
 
 # Distribution / packaging
-build/
-dist/
-*.egg-info/
+build
+dis
+*.egg-info
 
 # IPython Notebook
 .ipynb_checkpoints
