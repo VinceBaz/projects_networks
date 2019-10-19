@@ -14,7 +14,7 @@ tools for network neuroscience.
 
 ========================================================
 
-_anettols_           -> Folder that stores the package for the various tools
+_anettools_           -> Folder that stores the package for the various tools
 
 ### NOTE
 ========================================================
