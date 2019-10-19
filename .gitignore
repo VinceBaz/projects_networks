@@ -1,2 +1,10 @@
+# Byte-compiled / optimized / DLL file
 __pycache__
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# IPython Notebook
 .ipynb_checkpoints
