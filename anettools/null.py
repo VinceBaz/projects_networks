@@ -1,6 +1,6 @@
 import random
 import numpy as np
-from . import measures as m
+from . import assortativity as m
 
 def assort_preserv_swap(A, M, g, verbose=False):
 
