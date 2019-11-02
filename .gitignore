@@ -3,7 +3,7 @@ __pycache__
 
 # Distribution / packaging
 build
-dis
+dist/
 *.egg-info
 
 # IPython Notebook

@@ -270,12 +270,31 @@ def weightedAssort(A, M):
     of the nodes connected by edges in a network (This is basically a sort of
     assortativity measure for WEIGHTED network
     """
+	
+	#Check that M is 1D
+	if M.ndim > 1:
+		raise ValueError("dimension of M must be 1D")
+	
     Size = len(A)
     return(corr(np.tile(M, (Size, 1)).reshape(-1), np.tile(M, (Size, 1)).T.reshape(-1), A.reshape(-1)))
 
 
 def getPageRankWeights(A, degree, i, pr, n, maxIter=1000):
-
+	'''
+	Function that gives you the personalized pagerank of node i in network A
+	INPUTS:
+	A	    -> Adjacency matrix representation of your network. Dtype: (n, n) ndarray
+			   where n is the number of nodes in the network
+	degree  -> Degree (binary) or strength (weighted) of the nodes in your network
+	i       -> Index of node of interest
+	pr      -> Probability of restart
+	n       -> Number of nodes in the network
+	OUTPUTS:
+	F 		-> The Pagerank weights for each node
+	T       -> The integral scores of a distribution of pagerank weights [Not necessary]
+	it      -> Number of iteration 
+	'''
+	
     # Divide each row 'i' by the degree of node 'i', then get the transpose
     W = A/degree[:, np.newaxis]
     W = W.T  # Gives you the Markov Matrix of the network
@@ -283,7 +302,6 @@ def getPageRankWeights(A, degree, i, pr, n, maxIter=1000):
     # Initialize parameters...
     # F      -> The PageRank weights (current)
     # Fold   -> The PageRank weights (old)
-
     diff = 1
     it = 1
     F = np.zeros(n)
