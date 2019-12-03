@@ -299,9 +299,9 @@ def getPageRankWeights(A, degree, i, pr, n, maxIter=1000):
     it      -> Number of iteration
     '''
 
-    #Check if dimension of inputs are valid
-	if degree.ndim != 1 or A.ndim != 2:
-		raise TypeError("Dimensions of A and degree must respectively be 2 and 1")
+    # Check if dimension of inputs are valid
+    if degree.ndim != 1 or A.ndim != 2:
+        raise TypeError("Dimensions of A and degree must be 2 and 1")
 
     # Divide each row 'i' by the degree of node 'i', then get the transpose
     W = A/degree[:, np.newaxis]
