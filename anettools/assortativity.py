@@ -279,7 +279,7 @@ def weightedAssort(A, M, N=None):
         return(corr(np.tile(M, (Size, 1)).reshape(-1), np.tile(M, (Size, 1)).T.reshape(-1), A.reshape(-1)))
     else:
         return(corr(np.tile(M, (Size, 1)).reshape(-1), np.tile(N, (Size, 1)).T.reshape(-1), A.reshape(-1)))
-        
+
 
 def getPageRankWeights(A, degree, i, pr, n, maxIter=1000):
     '''
@@ -299,7 +299,11 @@ def getPageRankWeights(A, degree, i, pr, n, maxIter=1000):
     it      -> Number of iteration
     '''
 
-    # Divide each row 'i' by the out-degree of node 'i', then get the transpose
+    #Check if dimension of inputs are valid
+	if degree.ndim != 1 or A.ndim != 2:
+		raise TypeError("Dimensions of A and degree must respectively be 2 and 1")
+
+    # Divide each row 'i' by the degree of node 'i', then get the transpose
     W = A/degree[:, np.newaxis]
     W = W.T  # Gives you the Markov Matrix of the network
 
