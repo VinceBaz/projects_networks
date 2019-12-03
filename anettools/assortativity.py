@@ -4,7 +4,6 @@ Created on : 2019/06/04
 Last updated on:
 @author: Vincent Bazinet
 """
-
 import numpy as np
 import scipy.sparse as sparse
 from scipy.stats import pearsonr, rankdata
@@ -264,7 +263,7 @@ def globalAssort(A, M, method="pearson", debugInfo=False):
         return rglobal, mean, norms, denominator
 
 
-def weightedAssort(A, M):
+def weightedAssort(A, M, N=None):
     """
     Function to compute the weighted Pearson correlation between the attributes
     of the nodes connected by edges in a network (This is basically a sort of
@@ -276,8 +275,11 @@ def weightedAssort(A, M):
         raise ValueError("dimension of M must be 1D")
 
     Size = len(A)
-    return(corr(np.tile(M, (Size, 1)).reshape(-1), np.tile(M, (Size, 1)).T.reshape(-1), A.reshape(-1)))
-
+    if N is None:
+        return(corr(np.tile(M, (Size, 1)).reshape(-1), np.tile(M, (Size, 1)).T.reshape(-1), A.reshape(-1)))
+    else:
+        return(corr(np.tile(M, (Size, 1)).reshape(-1), np.tile(N, (Size, 1)).T.reshape(-1), A.reshape(-1)))
+        
 
 def getPageRankWeights(A, degree, i, pr, n, maxIter=1000):
     '''
@@ -285,7 +287,7 @@ def getPageRankWeights(A, degree, i, pr, n, maxIter=1000):
     INPUTS:
     A       -> Adjacency matrix representation of your network. Dtype: (n, n)
                ndarray where n is the number of nodes in the network
-    degree  -> Degree (binary) or strength (weighted) of the nodes in your
+    degree  -> out-degree (binary) or out-strength (weighted) of the nodes in your
                network
     i       -> Index of node of interest
     pr      -> Probability of restart
@@ -297,7 +299,7 @@ def getPageRankWeights(A, degree, i, pr, n, maxIter=1000):
     it      -> Number of iteration
     '''
 
-    # Divide each row 'i' by the degree of node 'i', then get the transpose
+    # Divide each row 'i' by the out-degree of node 'i', then get the transpose
     W = A/degree[:, np.newaxis]
     W = W.T  # Gives you the Markov Matrix of the network
 
