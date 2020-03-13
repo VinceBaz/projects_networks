@@ -1,5 +1,5 @@
 from setuptools import setup
 
-setup(name="Anettools",
+setup(name="projects_networks",
       version="0.0",
-      packages=["anettools"])
+      packages=["projects_networks"])
