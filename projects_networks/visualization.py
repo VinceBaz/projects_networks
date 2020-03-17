@@ -36,6 +36,7 @@ def plot_brain_surface(values, parcel="s", n="400", hemi="L", cmap="viridis",
             
     if parcel == "lau":
         order = "RL"
+        noplot=None
         lh = (home+"/"
               "nnt-data/"
               "atl-cammoun2012/"
