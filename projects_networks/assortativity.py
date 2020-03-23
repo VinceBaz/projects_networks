@@ -5,13 +5,11 @@ Last updated on:
 @author: Vincent Bazinet
 """
 import numpy as np
-import scipy.sparse as sparse
-from scipy.stats import pearsonr, rankdata
-
+from scipy.stats import rankdata
+from . import diffusion as dif
 
 def localAssort(A, M, weights=None, pr="multiscale", method="weighted",
-                thorndike=False, return_extra=False,
-                constraint=None):
+                thorndike=False, return_extra=False, constraint=None):
     '''
     Function to compute the local assortativity in an undirected network
     INPUTS:
@@ -80,13 +78,9 @@ def localAssort(A, M, weights=None, pr="multiscale", method="weighted",
         # Compute weighted vector for every node in the graph
         for i in range(n):
             if pr == "multiscale":
-                _, w_all[i, :], _ = calculateRWRrange(sparse.csc_matrix(A),
-                                                      degree,
-                                                      i,
-                                                      np.array([1]),
-                                                      n)
+                _, w_all[i, :], _ = dif.getPageRankWeights(A, i, 1, n)
             else:
-                pi, _, _ = calculateRWRrange(sparse.csc_matrix(A), degree, i, np.array([pr]), n)
+                pi, _, _ = dif.getPageRankWeights(A, i, pr, n)
                 w_all[i, :] = pi.reshape(-1)
 
     # else, your weights are inputed by the user of the function
@@ -279,103 +273,6 @@ def weightedAssort(A, M, N=None):
         return(corr(np.tile(M, (Size, 1)).reshape(-1), np.tile(M, (Size, 1)).T.reshape(-1), A.reshape(-1)))
     else:
         return(corr(np.tile(M, (Size, 1)).reshape(-1), np.tile(N, (Size, 1)).T.reshape(-1), A.reshape(-1)))
-
-
-def getPageRankWeights(A, degree, i, pr, n, maxIter=1000):
-    '''
-    Function that gives you the personalized pagerank of node i in network A
-    INPUTS:
-    A       -> Adjacency matrix representation of your network. Dtype: (n, n)
-               ndarray where n is the number of nodes in the network
-    degree  -> out-degree (binary) or out-strength (weighted) of the nodes in your
-               network
-    i       -> Index of node of interest
-    pr      -> Probability of restart
-    n       -> Number of nodes in the network
-    OUTPUTS:
-    F 		-> The Pagerank weights for each node
-    T       -> The integral scores of a distribution of pagerank weights
-               [Multiscale PageRank]
-    it      -> Number of iteration
-    '''
-
-    # Check if dimension of inputs are valid
-    if degree.ndim != 1 or A.ndim != 2:
-        raise TypeError("Dimensions of A and degree must be 2 and 1")
-
-    # Divide each row 'i' by the degree of node 'i', then get the transpose
-    W = A/degree[:, np.newaxis]
-    W = W.T  # Gives you the Markov Matrix of the network
-
-    # Initialize parameters...
-    # F      -> The PageRank weights (current)
-    # Fold   -> The PageRank weights (old)
-    diff = 1
-    it = 1
-    F = np.zeros(n)
-    F[i] = 1
-    Fold = F.copy()
-    T = F.copy()
-    oneminuspr = 1-pr
-
-    # Start Power Iteration...
-    while diff > 1e-9:
-        F = pr*W.dot(F)
-        F[i] += oneminuspr
-        T += (F-Fold)/((it+1)*(pr**it))
-        diff = np.sum((F-Fold)**2)
-        it += 1
-        if it > maxIter:
-            print(i, "max iterations exceeded")
-            diff = 0
-        Fold = F.copy()
-
-    return F, T, it
-
-
-# calculate the stationary distributions of a random walk with restart
-# for different probabilties of restart (using the pagerank as a function
-# approach)
-
-
-def calculateRWRrange(A, degree, i, prs, n, maxIter=1000):
-
-    # Use maximum 'pr' parameter for this computation
-    pr = prs[-1]
-
-    # Divide each row 'i' by the degree of node 'i'
-    D = sparse.diags(1./degree, 0, format='csc')
-    W = D.dot(A)
-
-    # Initialize parameters
-    diff = 1
-    it = 1
-    F = np.zeros(n)
-    Fall = np.zeros((n, len(prs)))
-    F[i] = 1
-    Fall[i, :] = 1
-    Fold = F.copy()
-    T = F.copy()
-
-    # Get the transpose
-    W = W.T   # W is the Markov Matrix (a.k.a. Transition Probability Matrix)
-
-    oneminuspr = 1-pr
-
-    while diff > 1e-9:
-        F = pr*W.dot(F)
-        F[i] += oneminuspr
-        Fall += np.outer((F-Fold), (prs/pr)**it)
-        T += (F-Fold)/((it+1)*(pr**it))
-
-        diff = np.sum((F-Fold)**2)
-        it += 1
-        if it > maxIter:
-            print(i, "max iterations exceeded")
-            diff = 0
-        Fold = F.copy()
-
-    return Fall, T, it
 
 
 def thorndike_correct(A, M, assortT, m, x_stds):
