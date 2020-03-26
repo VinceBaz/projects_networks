@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from os.path import expanduser
 from netneurotools.plotting import plot_fsaverage as p_fsa
 
+
 def plot_brain_surface(values, parcel="s", n="400", hemi="L", cmap="viridis",
                        colorbar=True, center=None, download=True):
     '''
@@ -10,41 +11,43 @@ def plot_brain_surface(values, parcel="s", n="400", hemi="L", cmap="viridis",
     ------
     INPUTS
     ------
-    -> values [ndarray (n,)] : Values to be plotted on the brain, where n is the
-    number of nodes in the parcellation.
+    -> values [ndarray (n,)] : Values to be plotted on the brain, where n is
+    the number of nodes in the parcellation.
     -> download [Bool] :  Boolean on whether the choosen parcellation is to
     be downloaded if the files are not found in the home directory
     '''
-    
+
     home = expanduser("~")
-    
-    if (hemi=="L") & (parcel=="lau"):
-        if n=="500":
-            scores=np.zeros((1000))+np.mean(values)
+
+    if (hemi == "L") & (parcel == "lau"):
+        if n == "500":
+            scores = np.zeros((1000))+np.mean(values)
             scores[501:] = values
             values = scores
-    
-    if (hemi=="L") & (parcel=="s"):
-        if n=="400":
-            scores=np.zeros((400))+np.mean(values)
+
+    if (hemi == "L") & (parcel == "s"):
+        if n == "400":
+            scores = np.zeros((400))+np.mean(values)
             scores[:200] = values
-            values=scores
-        if n=="800":
-            scores=np.zeros((800))+np.mean(values)
+            values = scores
+        if n == "800":
+            scores = np.zeros((800))+np.mean(values)
             scores[:400] = values
-            values=scores
-            
+            values = scores
+
     if parcel == "lau":
         order = "RL"
-        noplot=None
+        noplot = None
         lh = (home+"/"
               "nnt-data/"
               "atl-cammoun2012/"
-              "atl-Cammoun2012_space-fsaverage_res-"+n+"_hemi-L_deterministic.annot")
+              "atl-Cammoun2012_space-fsaverage_"
+              "res-"+n+"_hemi-L_deterministic.annot")
         rh = (home+"/"
               "nnt-data/"
               "atl-cammoun2012/"
-              "atl-Cammoun2012_space-fsaverage_res-"+n+"_hemi-R_deterministic.annot") 
+              "atl-Cammoun2012_space-fsaverage_"
+              "res-"+n+"_hemi-R_deterministic.annot")
     else:
         order = "LR"
         noplot = [b'Background+FreeSurfer_Defined_Medial_Wall', b'']
@@ -52,28 +55,30 @@ def plot_brain_surface(values, parcel="s", n="400", hemi="L", cmap="viridis",
               "nnt-data/"
               "atl-schaefer2018/"
               "fsaverage/"
-              "atl-Schaefer2018_space-fsaverage_hemi-L_desc-"+n+"Parcels7Networks_deterministic.annot")
+              "atl-Schaefer2018_space-fsaverage_"
+              "hemi-L_desc-"+n+"Parcels7Networks_deterministic.annot")
         rh = (home+"/"
               "nnt-data/"
               "atl-schaefer2018/"
               "fsaverage/"
-              "atl-Schaefer2018_space-fsaverage_hemi-R_desc-"+n+"Parcels7Networks_deterministic.annot") 
+              "atl-Schaefer2018_space-fsaverage_"
+              "hemi-R_desc-"+n+"Parcels7Networks_deterministic.annot")
 
     im = p_fsa(values,
-               lhannot=lh, 
-               rhannot=rh, 
+               lhannot=lh,
+               rhannot=rh,
                noplot=noplot,
                order=order,
                views=['lateral', 'm'],
-               vmin= np.amin(values),
-               vmax= np.amax(values),
+               vmin=np.amin(values),
+               vmax=np.amax(values),
                colormap=cmap,
                colorbar=colorbar,
                center=center)
-        
-    return im    
-    
-    
+
+    return im
+
+
 def plot_brain_dot(partition, coords, label=None, min_color=None,
                    max_color=None, colormap="viridis", colorbar=True, size=500,
                    show=True, dpi=100, norm=None):
