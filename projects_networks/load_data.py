@@ -174,7 +174,11 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
 
     # shortest path
     path = matrixPath+"/sp.npy"
-    if os.path.exists(path):
+    if os.path.exists(path) is False:
+        print("computing shortest paths... (might take a while)")
+        Network["sp"] = bct.distance_wei(Network["adj"])[0]
+        np.save(matrixPath+"/sp.npy", Network["sp"])
+    else:
         Network["sp"] = np.load(path)
 
     # diffusion embedding
@@ -190,7 +194,11 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
 
     # betweenness centrality
     path = matrixPath+"/bc.npy"
-    if os.path.exists(path):
+    if os.path.exists(path) is False:
+        print("computing betweenness centrality... (might take a while)")
+        Network["bc"] = bct.betweenness_wei(Network["adj"])
+        np.save(matrixPath+"/bc.npy", Network["bc"])
+    else:
         Network["bc"] = np.load(path)
 
     # routing efficiency

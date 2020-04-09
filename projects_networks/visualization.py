@@ -1,7 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from os.path import expanduser
+import os
 from netneurotools.plotting import plot_fsaverage as p_fsa
+from netneurotools.datasets import fetch_cammoun2012, fetch_schaefer2018
 
 
 def plot_brain_surface(values, parcel="s", n="400", hemi="L", cmap="viridis",
@@ -38,16 +40,22 @@ def plot_brain_surface(values, parcel="s", n="400", hemi="L", cmap="viridis",
     if parcel == "lau":
         order = "RL"
         noplot = None
+
         lh = (home+"/"
               "nnt-data/"
               "atl-cammoun2012/"
+              "fsaverage/"
               "atl-Cammoun2012_space-fsaverage_"
               "res-"+n+"_hemi-L_deterministic.annot")
         rh = (home+"/"
               "nnt-data/"
               "atl-cammoun2012/"
+              "fsaverage/"
               "atl-Cammoun2012_space-fsaverage_"
               "res-"+n+"_hemi-R_deterministic.annot")
+        if os.path.isfile(lh) or os.path.isfile(rh) is False:
+            fetch_cammoun2012(version='fsaverage')
+
     else:
         order = "LR"
         noplot = [b'Background+FreeSurfer_Defined_Medial_Wall', b'']
@@ -63,6 +71,8 @@ def plot_brain_surface(values, parcel="s", n="400", hemi="L", cmap="viridis",
               "fsaverage/"
               "atl-Schaefer2018_space-fsaverage_"
               "hemi-R_desc-"+n+"Parcels7Networks_deterministic.annot")
+        if os.path.isfile(lh) or os.path.isfile(rh) is False:
+            fetch_schaefer2018()
 
     im = p_fsa(values,
                lhannot=lh,
@@ -122,7 +132,10 @@ def plot_brain_dot(partition, coords, label=None, min_color=None,
     if colorbar is True:
 
         cbar_ax = fig.add_axes([0.3, 0, 0.4, 0.10])
-        cbar = fig.colorbar(mapp[0], cax=cbar_ax, orientation='horizontal', pad=0.05)
+        cbar = fig.colorbar(mapp[0],
+                            cax=cbar_ax,
+                            orientation='horizontal',
+                            pad=0.05)
 
         if label is not None:
             cbar.set_label(label, size=20)
