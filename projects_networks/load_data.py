@@ -112,6 +112,7 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     ----------------------------------
     -> kind : Either SC or FC
     -> hemi : Either "both", "L" or "R"
+    -> data : Either "HCP" or "lau"
     -> parcel : "68", "114", ... [if 'lau'] / "s400", "s800" [if "HCP"]
     -> version : either 1 (consensus computed without subcortex) or 2
         (consensus conputed with subcortex)
@@ -121,6 +122,7 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     '''
 
     mainPath = path+"/brainNetworks/"+data+"/"
+    home = os.path.expanduser("~")
 
     Network = {}
 
@@ -231,7 +233,58 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
         path = mainPath+"matrices/"+subset+kind+parcel+hemi+"_lengths.npy"
         Network["lengths"] = np.load(path)
 
+    # network information
+
+    if parcel[0] == "s":
+        n = parcel[1:]
+        Network["order"] = "LR"
+        Network["noplot"] = [b'Background+FreeSurfer_Defined_Medial_Wall',
+                             b'']
+        Network["lhannot"] = (home+"/"
+                              "nnt-data/"
+                              "atl-schaefer2018/"
+                              "fsaverage/"
+                              "atl-Schaefer2018_space-fsaverage_"
+                              "hemi-L_desc-"+n+"Parcels7Networks_"
+                              "deterministic.annot")
+        Network["rhannot"] = (home+"/"
+                              "nnt-data/"
+                              "atl-schaefer2018/"
+                              "fsaverage/"
+                              "atl-Schaefer2018_space-fsaverage_"
+                              "hemi-R_desc-"+n+"Parcels7Networks_"
+                              "deterministic.annot")
+
+    else:
+        n = parcel_to_n(parcel)
+        Network["order"] = "RL"
+        Network["noplot"] = None
+        Network["lhannot"] = (home+"/"
+                              "nnt-data/"
+                              "atl-cammoun2012/"
+                              "fsaverage/"
+                              "atl-Cammoun2012_space-fsaverage_"
+                              "res-"+n+"_hemi-L_deterministic.annot")
+        Network["rhannot"] = (home+"/"
+                              "nnt-data/"
+                              "atl-cammoun2012/"
+                              "fsaverage/"
+                              "atl-Cammoun2012_space-fsaverage_"
+                              "res-"+n+"_hemi-R_deterministic.annot")
+
     return Network
+
+
+def parcel_to_n(parcel):
+
+    mapping = {}
+    mapping["68"] = "033"
+    mapping["114"] = "060"
+    mapping["219"] = "125"
+    mapping["448"] = "250"
+    mapping["1000"] = "500"
+
+    return mapping[parcel]
 
 
 def efficiency(Network):

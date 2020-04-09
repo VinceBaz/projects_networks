@@ -1,13 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from os.path import expanduser
 import os
 from netneurotools.plotting import plot_fsaverage as p_fsa
 from netneurotools.datasets import fetch_cammoun2012, fetch_schaefer2018
 
 
-def plot_brain_surface(values, parcel="s", n="400", hemi="L", cmap="viridis",
-                       colorbar=True, center=None, download=True):
+def plot_brain_surface(values, network, hemi="L", cmap="viridis",
+                       colorbar=True, center=None):
     '''
     Function to plot data on the brain, on a surface parcellation.
     ------
@@ -15,64 +14,29 @@ def plot_brain_surface(values, parcel="s", n="400", hemi="L", cmap="viridis",
     ------
     -> values [ndarray (n,)] : Values to be plotted on the brain, where n is
     the number of nodes in the parcellation.
-    -> download [Bool] :  Boolean on whether the choosen parcellation is to
-    be downloaded if the files are not found in the home directory
+    -> network [dictionary] : Dictionary storing the network on associated
+    with the values (to be used to identify the adequate surface parcellation)
     '''
 
-    home = expanduser("~")
+    n = len(network["adj"])
 
-    if (hemi == "L") & (parcel == "lau"):
-        if n == "500":
-            scores = np.zeros((1000))+np.mean(values)
-            scores[501:] = values
-            values = scores
+    if (hemi == "L"):
+        scores = np.zeros((n))+np.mean(values)
+        scores[network["hemi"] == 1] = values
+        values = scores
+    elif (hemi == "R"):
+        scores = np.zeros((n))+np.mean(values)
+        scores[network["hemi"] == 0] = values
+        values = scores
 
-    if (hemi == "L") & (parcel == "s"):
-        if n == "400":
-            scores = np.zeros((400))+np.mean(values)
-            scores[:200] = values
-            values = scores
-        if n == "800":
-            scores = np.zeros((800))+np.mean(values)
-            scores[:400] = values
-            values = scores
+    order = network["order"]
+    noplot = network["noplot"]
+    lh = network["lhannot"]
+    rh = network["rhannot"]
 
-    if parcel == "lau":
-        order = "RL"
-        noplot = None
-
-        lh = (home+"/"
-              "nnt-data/"
-              "atl-cammoun2012/"
-              "fsaverage/"
-              "atl-Cammoun2012_space-fsaverage_"
-              "res-"+n+"_hemi-L_deterministic.annot")
-        rh = (home+"/"
-              "nnt-data/"
-              "atl-cammoun2012/"
-              "fsaverage/"
-              "atl-Cammoun2012_space-fsaverage_"
-              "res-"+n+"_hemi-R_deterministic.annot")
-        if os.path.isfile(lh) or os.path.isfile(rh) is False:
-            fetch_cammoun2012(version='fsaverage')
-
-    else:
-        order = "LR"
-        noplot = [b'Background+FreeSurfer_Defined_Medial_Wall', b'']
-        lh = (home+"/"
-              "nnt-data/"
-              "atl-schaefer2018/"
-              "fsaverage/"
-              "atl-Schaefer2018_space-fsaverage_"
-              "hemi-L_desc-"+n+"Parcels7Networks_deterministic.annot")
-        rh = (home+"/"
-              "nnt-data/"
-              "atl-schaefer2018/"
-              "fsaverage/"
-              "atl-Schaefer2018_space-fsaverage_"
-              "hemi-R_desc-"+n+"Parcels7Networks_deterministic.annot")
-        if os.path.isfile(lh) or os.path.isfile(rh) is False:
-            fetch_schaefer2018()
+    if os.path.isfile(lh) or os.path.isfile(rh) is False:
+        fetch_cammoun2012(version='fsaverage')
+        fetch_schaefer2018()
 
     im = p_fsa(values,
                lhannot=lh,
@@ -92,7 +56,10 @@ def plot_brain_surface(values, parcel="s", n="400", hemi="L", cmap="viridis",
 def plot_brain_dot(partition, coords, label=None, min_color=None,
                    max_color=None, colormap="viridis", colorbar=True, size=500,
                    show=True, dpi=100, norm=None):
-
+    '''
+    Function to plot data on the brain, where each brain region corresponds
+    to a point in a 3-dimensional eucledian space
+    '''
     if min_color is None:
         min_color = np.amin(partition)
     if max_color is None:
