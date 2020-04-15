@@ -3,6 +3,7 @@
 Created on Tue Mar 17 16:12:05 2020
 
 Code to load network-related data from a "data" folder stored locally
+into an easy to use python dictionary.
 
 @author: Vincent Bazinet
 """
@@ -126,6 +127,15 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
 
     Network = {}
 
+    Network["info"] = {}
+    Network["info"]["kind"] = kind
+    Network["info"]["parcel"] = parcel
+    Network["info"]["data"] = data
+    Network["info"]["hemi"] = hemi
+    Network["info"]["binary"] = binary
+    Network["info"]["version"] = version
+    Network["info"]["subset"] = subset
+
     if version == 1:
         version = ''
     else:
@@ -234,7 +244,6 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
         Network["lengths"] = np.load(path)
 
     # network information
-
     if parcel[0] == "s":
         n = parcel[1:]
         Network["order"] = "LR"
@@ -254,7 +263,6 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
                               "atl-Schaefer2018_space-fsaverage_"
                               "hemi-R_desc-"+n+"Parcels7Networks_"
                               "deterministic.annot")
-
     else:
         n = parcel_to_n(parcel)
         Network["order"] = "RL"

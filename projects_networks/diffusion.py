@@ -7,6 +7,7 @@ Last updated on: 2020/03/13
 
 import numpy as np
 
+
 def getPageRankWeights(A, i, pr, maxIter=1000):
     '''
     Function that gives you the personalized pagerank of node i in network A
@@ -22,8 +23,8 @@ def getPageRankWeights(A, i, pr, maxIter=1000):
     it      -> Number of iteration
     '''
 
-    degree = np.sum(A, axis=1) # out-degrees
-    n = len(A)                 #Number of nodes in the network
+    degree = np.sum(A, axis=1)  # out-degrees
+    n = len(A)                  # Number of nodes in the network
 
     # Check if dimension of inputs are valid
     if degree.ndim != 1 or A.ndim != 2:
@@ -58,33 +59,34 @@ def getPageRankWeights(A, i, pr, maxIter=1000):
 
     return F, T, it
 
+
 def getPersoPR(A, prs):
     '''
     Function to get the Personalized PageRank vectors for all the nodes in a
     given network and for multiple values of probability of restart.
     -----
     INPUTS
-    SC [(n,n) ndarray] OR dict  : either the adjacency matrix (numpy array) 
+    SC [(n,n) ndarray] OR dict  : either the adjacency matrix (numpy array)
                                   if a network or the entire network itself
                                   (python dictionary).
-    prs [(k) ndarray] or string : either a range of alpha values to use 
+    prs [(k) ndarray] or string : either a range of alpha values to use
                                   (numpy array) or string "multiscale".
     '''
-    
+
     if type(A) is dict:
         A = A["adj"]
-    
+
     n = len(A)
-    
+
     if isinstance(prs, np.ndarray):
-        persoPR = np.zeros((len(prs), n, n))
+        perso = np.zeros((len(prs), n, n))
         for pr, c in zip(prs, range(len(prs))):
             for i in range(n):
-                persoPR[c,i,:],_,_ = getPageRankWeights(A, i, pr, maxIter=1000)
-    
-    elif prs=="multiscale":
-        persoPR = np.zeros((n,n))
+                perso[c, i, :] = getPageRankWeights(A, i, pr, maxIter=1000)[0]
+
+    elif prs == "multiscale":
+        perso = np.zeros((n, n))
         for i in range(n):
-            _,persoPR[i,:],_ = getPageRankWeights(A, i, 1, maxIter=1000)
-    
-    return persoPR
+            _, perso[i, :], _ = getPageRankWeights(A, i, 1, maxIter=1000)
+
+    return perso
