@@ -110,16 +110,30 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
                  version=1, subset="all", path=None):
     '''
     Function to load a network as well as its attributes
-    ----------------------------------
-    -> kind : Either SC or FC
-    -> hemi : Either "both", "L" or "R"
-    -> data : Either "HCP" or "lau"
-    -> parcel : "68", "114", ... [if 'lau'] / "s400", "s800" [if "HCP"]
-    -> version : either 1 (consensus computed without subcortex) or 2
-        (consensus conputed with subcortex)
-    -> subset : either 'discov', 'valid' or 'all'
-    -> path : path to the "data" folder in which the data will be stored. If
+
+    Parameters
+    ----------
+    kind : string
+        Either 'SC' or 'FC'.
+    hemi : string
+        Either "both", "L" or "R".
+    data : string
+        Either "HCP" or "lau".
+    parcel : string
+        Either "68", "114", ... [if 'lau'] / "s400", "s800" [if "HCP"]
+    version : int
+        Either 1 (consensus computed without subcortex) or 2 (consensus
+        conputed with subcortex)
+    subset : string
+        Either 'discov', 'valid' or 'all'
+    path : string
+        path to the "data" folder in which the data will be stored. If
         none, then assumes that path is current folder.
+
+    Returns
+    -------
+    Network : dictionary
+        Dictionary storing relevant attributes about the network
     '''
 
     mainPath = path+"/brainNetworks/"+data+"/"
@@ -158,9 +172,15 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
         hemi = ''
 
     # Adjacency matrix
+    #
+    # [look at time when file was last modified]
     # [set negative values to 0, fill diagonal, make symmetric]
+
     path = matrixPath+".npy"
     A = np.load(path)
+
+    last_modified = os.path.getmtime(path)
+
     A[A < 0] = 0
     np.fill_diagonal(A, 0)
     A = (A + A.T)/2
@@ -185,12 +205,31 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     Network["cc"] = bct.clustering_coef_wu(A)
 
     # shortest path
+    #
+    # Loaded from saved file...
+    # IF file not found OR Adjacency was modified after creation,
+    # then recompute measure
+
     path = matrixPath+"/sp.npy"
+
     if os.path.exists(path) is False:
-        print("computing shortest paths... (might take a while)")
+
+        print("shortest path not found")
+        print("computing shortest path...")
+
         Network["sp"] = bct.distance_wei(Network["adj"])[0]
         np.save(matrixPath+"/sp.npy", Network["sp"])
+
+    elif os.path.getmtime(path) < last_modified:
+
+        print("new adjacency matrix was found")
+        print("computing shortest paths...")
+
+        Network["sp"] = bct.distance_wei(Network["adj"])[0]
+        np.save(matrixPath+"/sp.npy", Network["sp"])
+
     else:
+
         Network["sp"] = np.load(path)
 
     # diffusion embedding
@@ -205,11 +244,25 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     Network["mfpt"] = bct.mean_first_passage_time(A)
 
     # betweenness centrality
+    #
+    # Loaded from saved file...
+    # IF file not found OR Adjacency was modified after creation,
+    # then recompute measure
+
     path = matrixPath+"/bc.npy"
     if os.path.exists(path) is False:
-        print("computing betweenness centrality... (might take a while)")
+
+        print("betweenness centrality not found")
+        print("computing betweenness centrality...")
         Network["bc"] = bct.betweenness_wei(Network["adj"])
         np.save(matrixPath+"/bc.npy", Network["bc"])
+
+    elif os.path.getmtime(path) < last_modified:
+        print("new adjacency matrix was found")
+        print("recomputing betweeness centrality...")
+        Network["bc"] = bct.betweenness_wei(Network["adj"])
+        np.save(matrixPath+"/bc.npy", Network["bc"])
+
     else:
         Network["bc"] = np.load(path)
 
