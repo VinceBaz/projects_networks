@@ -5,15 +5,95 @@ Functions that are useful for investigating the diffusive architecture of
 networks.
 
 Created on : 2020/03/13
-Last updated on: 2020/03/13
+Last updated on: 2020/04/25
 @author: Vincent Bazinet
 """
 
 import numpy as np
 
 
+def transition_matrix(A):
+    """
+    Function to get the transition matrix (A.K.A. prabability or Markov matrix)
+    of a network
+
+    Parameters
+    ----------
+    A : (n,n) ndarray OR dict
+        Either the adjaency matrix of the the network (ndarray) or the full
+        dictionary storing a network's information (dict)
+
+    Return
+    -------
+    T : (n,n) ndarray
+        The transition probability matrix of the network of interest
+    """
+
+    if isinstance(A, dict):
+        A = A["adj"]
+
+    deg = np.sum(A, axis=0)
+
+    D = np.diag(deg)
+    D_inv = np.linalg.matrix_power(D, -1)
+    T = np.matmul(D_inv, A)
+
+    return T
+
+
+def random_walk(A, p0, n):
+    """
+    Function to simulate a simple unbiased random walk on a network.
+
+    Parameters
+    ----------
+    A : (n,n) ndarray OR dict
+        Either the adjaency matrix of the the network (ndarray) or the full
+        dictionary storing a network's information (dict).
+    p0 : (n,) ndarray OR int
+        The initial distribution of random walkers on the network (ndarray). If
+        the walk is initiated from a single node of interest, one can use the
+        index of this node (int).
+    n : int
+        Number of iterations to be performed (i.e. the length of the walks)
+    """
+
+    if isinstance(A, dict):
+        A = A["adj"]
+
+    n = len(A)
+
+    # Get Markov matrix of the network (transposed, in this case)
+    W = transition_matrix(A).T
+
+    # Initialize initial probabilities
+    if isinstance(p0, np.ndarray):
+        F = p0
+    else:
+        F = np.zeros(n)
+        F[p0] = 1
+
+    # Initialize other parameters...
+    diff = 1
+    it = 1
+    Fold = F.copy()
+
+    # Start Power Iteration...
+    while it < n:
+        F = W.dot(F)
+        diff = np.sum((F-Fold)**2)
+        if diff < 1e-9:
+            print("stationary distribution reached (", it, ")")
+            diff = 0
+            return F
+        Fold = F.copy()
+        it += 1
+
+    return F
+
+
 def getPageRankWeights(A, i, pr, maxIter=1000):
-    '''
+    """
     Function that gives you the personalized PageRank of a node in a network
 
     Parameters
@@ -40,7 +120,7 @@ def getPageRankWeights(A, i, pr, maxIter=1000):
         values of the damping factor. Also called Multiscale PageRank.
     it : int
         Number of iterations
-    '''
+    """
 
     degree = np.sum(A, axis=1)  # out-degrees
     n = len(A)                  # Number of nodes in the network
@@ -84,17 +164,19 @@ def getPageRankWeights(A, i, pr, maxIter=1000):
 
 
 def getPersoPR(A, prs):
-    '''
+    """
     Function to get the Personalized PageRank vectors for all the nodes in a
     given network and for multiple values of probability of restart.
-    -----
-    INPUTS
-    SC [(n,n) ndarray] OR dict  : either the adjacency matrix (numpy array)
-                                  if a network or the entire network itself
-                                  (python dictionary).
-    prs [(k) ndarray] or string : either a range of alpha values to use
-                                  (numpy array) or string "multiscale".
-    '''
+
+    Parameters
+    ----------
+    SC : (n,n) ndarray OR dict
+        Either the adjacency matrix (numpy array) if a network or the entire
+        network itself (python dictionary).
+    prs : (k) ndarray OR string
+        Either a range of alpha values to use (numpy array) or string
+        "multiscale".
+    """
 
     if type(A) is dict:
         A = A["adj"]
