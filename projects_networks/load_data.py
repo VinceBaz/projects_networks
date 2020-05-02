@@ -174,13 +174,10 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     # Adjacency matrix
     #
     # [look at time when file was last modified]
-    # [set negative values to 0, fill diagonal, make symmetric]
-
     path = matrixPath+".npy"
     A = np.load(path)
-
     last_modified = os.path.getmtime(path)
-
+    # [set negative values to 0, fill diagonal, make symmetric]
     A[A < 0] = 0
     np.fill_diagonal(A, 0)
     A = (A + A.T)/2
@@ -209,7 +206,6 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     # Loaded from saved file...
     # IF file not found OR Adjacency was modified after creation,
     # then recompute measure
-
     path = matrixPath+"/sp.npy"
 
     if os.path.exists(path) is False:
@@ -248,7 +244,6 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     # Loaded from saved file...
     # IF file not found OR Adjacency was modified after creation,
     # then recompute measure
-
     path = matrixPath+"/bc.npy"
     if os.path.exists(path) is False:
 

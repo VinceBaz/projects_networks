@@ -6,7 +6,7 @@ from netneurotools.datasets import fetch_cammoun2012, fetch_schaefer2018
 
 
 def plot_brain_surface(values, network, hemi="L", cmap="viridis",
-                       colorbar=True, center=None):
+                       colorbar=True, center=None, vmin=None, vmax=None):
     '''
     Function to plot data on the brain, on a surface parcellation.
     ------
@@ -38,14 +38,19 @@ def plot_brain_surface(values, network, hemi="L", cmap="viridis",
         fetch_cammoun2012(version='fsaverage')
         fetch_schaefer2018()
 
+    if vmin is None:
+        vmin = np.amin(values)
+    if vmax is None:
+        vmax = np.amax(values)
+
     im = p_fsa(values,
                lhannot=lh,
                rhannot=rh,
                noplot=noplot,
                order=order,
                views=['lateral', 'm'],
-               vmin=np.amin(values),
-               vmax=np.amax(values),
+               vmin=vmin,
+               vmax=vmax,
                colormap=cmap,
                colorbar=colorbar,
                center=center)
