@@ -10,7 +10,7 @@ Last updated on: 2020/04/25
 """
 
 import numpy as np
-
+import tqdm
 
 def transition_matrix(A):
     """
@@ -107,8 +107,8 @@ def getPageRankWeights(A, i, pr, maxIter=1000):
         Damping factor (One minus the probability of restart). Must be between
         0 and 1.
     maxIter : int
-        Number of maximum of iterations to perform in case the algorithm
-        does not converge (if reached, then prints a warning)
+        Maximum number of iterations to perform in case the algorithm
+        does not converge (if reached, then prints a warning).
 
     Returns
     -------
@@ -163,7 +163,7 @@ def getPageRankWeights(A, i, pr, maxIter=1000):
     return F, T, it
 
 
-def getPersoPR(A, prs):
+def getPersoPR(A, prs, verbose=False):
     """
     Function to get the Personalized PageRank vectors for all the nodes in a
     given network and for multiple values of probability of restart.
@@ -186,7 +186,7 @@ def getPersoPR(A, prs):
     if isinstance(prs, np.ndarray):
         perso = np.zeros((len(prs), n, n))
         for pr, c in zip(prs, range(len(prs))):
-            for i in range(n):
+            for i in tqdm.trange(n) if verbose else range(n):
                 perso[c, i, :] = getPageRankWeights(A, i, pr, maxIter=1000)[0]
 
     elif prs == "multiscale":
