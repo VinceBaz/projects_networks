@@ -182,16 +182,17 @@ def getPersoPR(A, prs, verbose=False):
         A = A["adj"]
 
     n = len(A)
+    k = len(prs)
 
     if isinstance(prs, np.ndarray):
-        perso = np.zeros((len(prs), n, n))
-        for pr, c in zip(prs, range(len(prs))):
-            for i in tqdm.trange(n) if verbose else range(n):
-                perso[c, i, :] = getPageRankWeights(A, i, pr, maxIter=1000)[0]
+        perso = np.zeros((k, n, n))
+        for c in tqdm.trange(k) if verbose else range(k):
+            for i in range(n):
+                perso[c, i, :] = getPageRankWeights(A, i, prs[c])[0]
 
     elif prs == "multiscale":
         perso = np.zeros((n, n))
         for i in range(n):
-            _, perso[i, :], _ = getPageRankWeights(A, i, 1, maxIter=1000)
+            _, perso[i, :], _ = getPageRankWeights(A, i, 1)
 
     return perso
