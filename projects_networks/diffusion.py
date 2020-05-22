@@ -12,6 +12,7 @@ Last updated on: 2020/04/25
 import numpy as np
 import tqdm
 
+
 def transition_matrix(A):
     """
     Function to get the transition matrix (A.K.A. prabability or Markov matrix)

@@ -9,16 +9,18 @@ def plot_brain_surface(values, network, hemi="L", cmap="viridis",
                        colorbar=True, center=None, vmin=None, vmax=None):
     '''
     Function to plot data on the brain, on a surface parcellation.
-    ------
-    INPUTS
-    ------
-    -> values [ndarray (n,)] : Values to be plotted on the brain, where n is
-    the number of nodes in the parcellation.
-    -> network [dictionary] : Dictionary storing the network on associated
-    with the values (to be used to identify the adequate surface parcellation)
+
+    PARAMETERS
+    ----------
+    values : ndarray (n,)
+        Values to be plotted on the brain, where n is the number of nodes in
+        the parcellation.
+    network : dictionary
+        Dictionary storing the network on associated with the values (to be
+        used to identify the adequate surface parcellation)
     '''
 
-    n = len(network["adj"])
+    n = len(network["hemi"])
 
     if (hemi == "L"):
         scores = np.zeros((n))+np.mean(values)

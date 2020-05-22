@@ -163,13 +163,14 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     if subset == "all":
         subset = ''
 
+    if hemi == "both":
+        hemi = ''
+
     mainPath = path+"/brainNetworks/"+data+"/"
-    matrixPath = mainPath+"matrices/"+subset+kind+parcel+binary+version
+    matrixPath = mainPath+"matrices/"+subset+kind+parcel+hemi+binary+version
 
     # hemisphere
-    if hemi == "both":
-        Network["hemi"] = np.load(matrixPath+"/hemi.npy")
-        hemi = ''
+    Network["hemi"] = np.load(matrixPath+"/hemi.npy")
 
     # Adjacency matrix
     #
