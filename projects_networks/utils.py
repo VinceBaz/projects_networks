@@ -33,7 +33,8 @@ def mask(network, other_networks=None, with_diag=False, type="all"):
 
     '''
 
-    n = len(network["adj"])
+    A = network["adj"]
+    n = len(A)
     mask = np.zeros((n, n), dtype="bool")
     mask[:] = True
 
@@ -44,18 +45,18 @@ def mask(network, other_networks=None, with_diag=False, type="all"):
         return mask
 
     elif type == "non_zero":
-        mask[network == 0] = False
+        mask[A == 0] = False
 
         if other_networks is not None:
             for i in range(len(other_networks)):
-                mask[other_networks[i] == 0] = False
+                mask[other_networks[i]["adj"] == 0] = False
 
     elif type == "zero":
-        mask[network != 0] = False
+        mask[A != 0] = False
 
         if other_networks is not None:
             for i in range(len(other_networks)):
-                mask[other_networks[i] != 0] = False
+                mask[other_networks[i]["adj"] != 0] = False
 
     return mask
 
