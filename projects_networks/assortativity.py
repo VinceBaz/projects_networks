@@ -8,31 +8,36 @@ import numpy as np
 from scipy.stats import rankdata
 from . import diffusion as dif
 
+
 def localAssort(A, M, weights=None, pr="multiscale", method="weighted",
                 thorndike=False, return_extra=False, constraint=None):
     '''
     Function to compute the local assortativity in an undirected network
-    INPUTS:
-    A           ->  Adjacency matrix - Numpy Array, size:(n,n)
-    M           ->  Node Properties - Numpy Array, size:(n) OR Tuple of 2 Numpy
-                    Arrays, size:(n)
-    weights     ->  Weights to be use to compute the assortativity. If None,
-                    then pagerank vector will be used as the weights, with
-                    a restart probability given by 'pr' - None or Numpy Array,
-                    size:(n,n)
-                    where row n corresponds to the weight vector of node n
-    pr          ->  If weights is None, value of the alpha parameter used to
-                    compute the pagerank vectors - Float, between 0 and 1
-    method      ->  Method used to compute the local assortativity. "weighted"
-                    computes assortativity by computing the weighted Pearson
-                    correlation Coefficient. "Peel" computes assortativity by
-                    standardizing the scalar values using the mean and SD of
-                    the attributes (Peel et al., 2018)
-    thorndike   ->  Correction for possible Restriction of range in correlation
-                    computation (Thorndike equation II)
-    return_extra->  Returns dictionary providing extra information regarding
-                    the weighted distribution of the attributes used to
-                    compute the correlation.
+
+    Parameters
+    ----------
+    A : ndarray (n,n)
+        Adjacency matrix of the network
+    M : ndarray (n,) OR tuple of ndarray, each of size (n,)
+        Node attributes.
+    weights : None or ndarray (n,n)
+        Weights to be use to compute the assortativity. rows are the individual
+        weight vectors for each nodes. If None, then pagerank vector will be
+        used as the weights, with a restart probability given by'pr'.
+    pr : Float
+        If weights is None, value of the alpha parameter used to compute the
+        pagerank vectors. Must be a value between 0 and 1.
+    method : str
+        Method used to compute the local assortativity. "weighted" computes
+        assortativity by computing the weighted Pearson correlation
+        Coefficient. "Peel" computes assortativity by standardizing the scalar
+        values using the mean and SD of the attributes (Peel et al., 2018).
+    thorndike : Boolean
+        Correction for possible Restriction of range in correlation computation
+        (Thorndike equation II).
+    return_extra : Boolean
+        Returns dictionary providing extra information regarding the weighted
+        distribution of the attributes used to compute the correlation.
     '''
 
     # Check if its heterogenous or not
