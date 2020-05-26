@@ -2,6 +2,7 @@ import numpy as np
 from scipy.spatial.distance import cdist
 from scipy.stats import zscore
 
+
 def localI(A, coords, M):
     '''
     Function to compute the local Moran's I of the nodes

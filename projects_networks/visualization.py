@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import os
 from netneurotools.plotting import plot_fsaverage as p_fsa
 from netneurotools.datasets import fetch_cammoun2012, fetch_schaefer2018
+from . import colors
 
 
 def plot_brain_surface(values, network, hemi="L", cmap="viridis",
@@ -60,7 +61,7 @@ def plot_brain_surface(values, network, hemi="L", cmap="viridis",
     return im
 
 
-def plot_brain_dot(partition, coords, label=None, min_color=None,
+def plot_brain_dot(scores, coords, label=None, min_color=None,
                    max_color=None, colormap="viridis", colorbar=True, size=500,
                    show=True, dpi=100, norm=None):
     '''
@@ -68,9 +69,9 @@ def plot_brain_dot(partition, coords, label=None, min_color=None,
     to a point in a 3-dimensional eucledian space
     '''
     if min_color is None:
-        min_color = np.amin(partition)
+        min_color = np.amin(scores)
     if max_color is None:
-        max_color = np.amax(partition)
+        max_color = np.amax(scores)
 
     fig = plt.figure(figsize=(35, 10), dpi=dpi)
 
@@ -88,7 +89,7 @@ def plot_brain_dot(partition, coords, label=None, min_color=None,
         mapp[k] = ax[k].scatter(xs=coords[:, 0],
                                 ys=coords[:, 1],
                                 zs=coords[:, 2],
-                                c=partition,
+                                c=scores,
                                 vmin=min_color,
                                 vmax=max_color,
                                 s=size,
@@ -117,3 +118,88 @@ def plot_brain_dot(partition, coords, label=None, min_color=None,
 
     if show is False:
         plt.close()
+
+
+def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
+                 edge_alpha=0.25, edge_vmin=None, edge_vmax=None,
+                 node_cmap="viridis", node_vmin=None, node_vmax=None,
+                 linewidth=0.25, s=100, projection=None, view="sagittal"):
+
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, projection=projection)
+
+    # Identify all of the edges in the network and get their colors
+    Edges = np.where(G["adj"] > 0)
+
+    if edge_scores is None:
+        edge_colors = np.zeros((len(Edges[0])), dtype=str) + "black"
+    else:
+        edge_colors = colors.get_color_distribution(edge_scores[Edges],
+                                                    cmap=edge_cmap,
+                                                    vmin=edge_vmin,
+                                                    vmax=edge_vmax)
+
+    if node_scores is None:
+        node_scores = "black"
+
+    if projection is None:
+
+        # Plot the edges
+        for edge_i, edge_j, c in zip(Edges[0], Edges[1], edge_colors):
+
+            x1 = coords[edge_i, 0]
+            x2 = coords[edge_j, 0]
+            y1 = coords[edge_i, 1]
+            y2 = coords[edge_j, 1]
+
+            ax.plot([x1, x2],
+                    [y1, y2],
+                    c=c,
+                    linewidth=linewidth,
+                    alpha=edge_alpha,
+                    zorder=0)
+
+        # plot the nodes
+        ax.scatter(coords[:, 0],
+                   coords[:, 1],
+                   c=node_scores,
+                   cmap=node_cmap,
+                   vmin=node_vmin,
+                   vmax=node_vmax,
+                   s=s,
+                   zorder=1)
+        ax.set_aspect('equal')
+
+    elif projection == "3d":
+
+        # axial view of the brain
+        if view == "axial":
+            ax.view_init(90, 0)
+
+        # sagittal view of the brain
+        elif view == "sagittal":
+            ax.view_init(0, 0)
+
+        ax.scatter(coords[:, 0],
+                   coords[:, 1],
+                   coords[:, 2],
+                   c=node_scores,
+                   s=s,
+                   zorder=1,
+                   depthshade=False,
+                   cmap=node_cmap,
+                   vmin=node_vmin,
+                   vmax=node_vmax)
+
+        for edge_i, edge_j, c in zip(Edges[0], Edges[1], edge_colors[Edges]):
+            ax.plot([coords[edge_i, 0], coords[edge_j, 0]],
+                    [coords[edge_i, 1], coords[edge_j, 1]],
+                    [coords[edge_i, 2], coords[edge_j, 2]],
+                    c=c,
+                    linewidth=linewidth,
+                    zorder=0)
+
+        scaling = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
+        ax.auto_scale_xyz(*[[np.min(scaling), np.max(scaling)]]*3)
+
+    ax.axis('off')

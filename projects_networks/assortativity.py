@@ -4,6 +4,7 @@ Created on : 2019/06/04
 Last updated on:
 @author: Vincent Bazinet
 """
+
 import numpy as np
 from scipy.stats import rankdata
 from . import diffusion as dif
@@ -83,9 +84,9 @@ def localAssort(A, M, weights=None, pr="multiscale", method="weighted",
         # Compute weighted vector for every node in the graph
         for i in range(n):
             if pr == "multiscale":
-                _, w_all[i, :], _ = dif.getPageRankWeights(A, i, 1, n)
+                _, w_all[i, :], _ = dif.getPageRankWeights(A, i, 1)
             else:
-                pi, _, _ = dif.getPageRankWeights(A, i, pr, n)
+                pi, _, _ = dif.getPageRankWeights(A, i, pr)
                 w_all[i, :] = pi.reshape(-1)
 
     # else, your weights are inputed by the user of the function
