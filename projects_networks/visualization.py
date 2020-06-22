@@ -132,7 +132,7 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
     Edges = np.where(G["adj"] > 0)
 
     if edge_scores is None:
-        edge_colors = np.zeros((len(Edges[0])), dtype=str) + "black"
+        edge_colors = np.full((len(Edges[0])), "black", dtype="<U10")
     else:
         edge_colors = colors.get_color_distribution(edge_scores[Edges],
                                                     cmap=edge_cmap,
@@ -191,7 +191,7 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                    vmin=node_vmin,
                    vmax=node_vmax)
 
-        for edge_i, edge_j, c in zip(Edges[0], Edges[1], edge_colors[Edges]):
+        for edge_i, edge_j, c in zip(Edges[0], Edges[1], edge_colors):
             ax.plot([coords[edge_i, 0], coords[edge_j, 0]],
                     [coords[edge_i, 1], coords[edge_j, 1]],
                     [coords[edge_i, 2], coords[edge_j, 2]],
@@ -203,3 +203,5 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
         ax.auto_scale_xyz(*[[np.min(scaling), np.max(scaling)]]*3)
 
     ax.axis('off')
+
+    return fig
