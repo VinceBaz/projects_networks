@@ -351,6 +351,39 @@ def parcel_to_n(parcel):
     return mapping[parcel]
 
 
+def get_node_mask(Network, path='../data'):
+    '''
+    Function to get a mask of the nodes of this particular network (1), given
+    the original parcellation (0).
+    '''
+
+    matricesPath = path+"/brainNetworks/lau/matrices"
+
+    with open(matricesPath+"/general_info/hemi.pkl", "rb") as handle:
+        hemi = pickle.load(handle)
+    hemi = hemi[Network['cammoun_id']].reshape(-1)
+
+    with open(matricesPath+"/general_info/subcortexNodes.pkl", "rb") as handle:
+        subcortexNodes = pickle.load(handle)
+    subcortexNodes = subcortexNodes[Network['cammoun_id']]
+    node_type = np.zeros(len(hemi))
+    node_type[subcortexNodes] = 1
+
+    network_hemi = Network['info']['hemi']
+
+    if network_hemi == 'L':
+        network_nodes = np.where((hemi == 1) & (node_type == 0))[0]
+    elif network_hemi == 'R':
+        network_nodes = np.where((hemi == 0) & (node_type == 0))[0]
+    else:
+        network_nodes = np.where((node_type == 0))[0]
+
+    mask = np.zeros((len(hemi)), dtype=bool)
+    mask[network_nodes] = True
+
+    return mask
+
+
 def get_streamline_length(Network, path='../data'):
     '''
     Function to get the streamline lengths of a structural consensus network.
