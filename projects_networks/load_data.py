@@ -15,6 +15,7 @@ from mapalign.embed import compute_diffusion_map
 import os
 import abagen
 from sklearn.decomposition import PCA
+import pickle
 
 
 def load_genes(parcel, data="lau", hemi="both", path=None):
@@ -292,6 +293,11 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
         path = mainPath+"matrices/"+subset+kind+parcel+hemi+"_lengths.npy"
         Network["lengths"] = np.load(path)
 
+    # streamline connection lengths
+    path = matrixPath+"/len.npy"
+    if os.path.exists(path) is True:
+        Network['len'] = np.load(path)
+
     # network information
     if parcel[0] == "s":
         n = parcel[1:]
@@ -328,6 +334,7 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
                               "fsaverage/"
                               "atl-Cammoun2012_space-fsaverage_"
                               "res-"+n+"_hemi-R_deterministic.annot")
+        Network['cammoun_id'] = n
 
     return Network
 
@@ -342,6 +349,31 @@ def parcel_to_n(parcel):
     mapping["1000"] = "500"
 
     return mapping[parcel]
+
+
+def get_streamline_length(Network, path='../data'):
+
+    matricesPath = path+"/brainNetworks/lau/matrices"
+
+    with open(matricesPath+"/general_info/subcortexNodes.pkl", "rb") as handle:
+        subcortexNodes = pickle.load(handle)
+    subcortexNodes = subcortexNodes[Network['cammoun_id']]
+
+    indSC = np.load((path +
+                     "/Lausanne/struct/struct_len_scale" +
+                     Network['cammoun_id'] +
+                     ".npy")
+                    )
+
+    indSC = np.delete(indSC, (7, 12, 43), axis=2)
+    indSC = np.delete(indSC, subcortexNodes, axis=0)
+    indSC = np.delete(indSC, subcortexNodes, axis=1)
+    indSC[indSC == 0] = np.nan
+
+    SC_len = Network['adj'].copy()
+    SC_len[SC_len > 0] = np.nanmean(indSC, axis=2)[SC_len > 0]
+
+    return SC_len
 
 
 def efficiency(Network):
