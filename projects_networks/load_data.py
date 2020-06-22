@@ -352,12 +352,29 @@ def parcel_to_n(parcel):
 
 
 def get_streamline_length(Network, path='../data'):
+    '''
+    Function to get the streamline lengths of a structural consensus network.
+    '''
 
     matricesPath = path+"/brainNetworks/lau/matrices"
+    network_hemi = Network['info']['hemi']
+    
+    with open(matricesPath+"/general_info/hemi.pkl", "rb") as handle:
+        hemi = pickle.load(handle)
+    hemi = hemi[Network['cammoun_id']]
 
     with open(matricesPath+"/general_info/subcortexNodes.pkl", "rb") as handle:
         subcortexNodes = pickle.load(handle)
     subcortexNodes = subcortexNodes[Network['cammoun_id']]
+    node_type = np.zeros(len(hemi))
+    node_type[subcortexNodes] = 1
+
+    if network_hemi == "L":
+        ignored = np.where((hemi == 0) or (node_type == 1))[0]
+    elif network_hemi == 'R':
+        ignored = np.where((hemi == 1) or (node_type == 1))[0]
+    else:
+        ignored = np.where((node_type == 1))[0]
 
     indSC = np.load((path +
                      "/Lausanne/struct/struct_len_scale" +
@@ -366,8 +383,8 @@ def get_streamline_length(Network, path='../data'):
                     )
 
     indSC = np.delete(indSC, (7, 12, 43), axis=2)
-    indSC = np.delete(indSC, subcortexNodes, axis=0)
-    indSC = np.delete(indSC, subcortexNodes, axis=1)
+    indSC = np.delete(indSC, ignored, axis=0)
+    indSC = np.delete(indSC, ignored, axis=1)
     indSC[indSC == 0] = np.nan
 
     SC_len = Network['adj'].copy()
