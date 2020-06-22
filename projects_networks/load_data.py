@@ -358,10 +358,10 @@ def get_streamline_length(Network, path='../data'):
 
     matricesPath = path+"/brainNetworks/lau/matrices"
     network_hemi = Network['info']['hemi']
-    
+
     with open(matricesPath+"/general_info/hemi.pkl", "rb") as handle:
         hemi = pickle.load(handle)
-    hemi = hemi[Network['cammoun_id']]
+    hemi = hemi[Network['cammoun_id']].reshape(-1)
 
     with open(matricesPath+"/general_info/subcortexNodes.pkl", "rb") as handle:
         subcortexNodes = pickle.load(handle)
@@ -370,7 +370,7 @@ def get_streamline_length(Network, path='../data'):
     node_type[subcortexNodes] = 1
 
     if network_hemi == "L":
-        ignored = np.where((hemi == 0) or (node_type == 1))[0]
+        ignored = np.where((hemi == 0) | (node_type == 1))[0]
     elif network_hemi == 'R':
         ignored = np.where((hemi == 1) or (node_type == 1))[0]
     else:
