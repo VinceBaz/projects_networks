@@ -16,6 +16,7 @@ import os
 import abagen
 from sklearn.decomposition import PCA
 import pickle
+import pandas as pd
 
 
 def load_genes(parcel, data="lau", hemi="both", path=None):
@@ -336,6 +337,12 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
                               "res-"+n+"_hemi-R_deterministic.annot")
         Network['cammoun_id'] = n
 
+    # Node mask
+    Network['node_mask'] = get_node_mask(Network)
+
+    # ROI names
+    Network['ROInames'] = get_ROInames(Network)
+
     return Network
 
 
@@ -453,6 +460,34 @@ def efficiency_diffusion(Network):
     efficiency_global = np.mean(efficiency_local)
 
     return efficiency_global
+
+
+def get_ROInames(Network, path=None):
+    '''
+    Function to get a list of names of individual ROI regions in the given
+    parcellation.
+    '''
+
+    if path is None:
+        path = os.path.expanduser('~')
+
+    f = (path + "/nnt-data/atl-cammoun2012/MNI152NLin2009aSym/" +
+         "atl-Cammoun2012_space-MNI152NLin2009aSym_info.csv")
+
+    scale = "scale"+Network['cammoun_id']
+
+    df = pd.read_csv(f)
+    df_scale = df.loc[df['scale'] == scale]
+
+    ROInames = []
+    for index, row in df_scale.iterrows():
+        ROInames.append(row['label'])
+
+    ROInames = np.array(ROInames)
+
+    ROInames = ROInames[Network['node_mask']]
+
+    return ROInames
 
 
 def getPCAgene(genes, return_scores=False):
