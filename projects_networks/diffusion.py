@@ -11,7 +11,7 @@ Last updated on: 2020/04/25
 
 import numpy as np
 import tqdm
-
+from scipy.linalg import fractional_matrix_power
 
 def transition_matrix(A):
     """
@@ -22,7 +22,7 @@ def transition_matrix(A):
     ----------
     A : (n,n) ndarray OR dict
         Either the adjaency matrix of the the network (ndarray) or the full
-        dictionary storing a network's information (dict)
+        dictionary storing a network's information (dict, see load_data.py)
 
     Return
     -------
@@ -40,6 +40,35 @@ def transition_matrix(A):
     T = np.matmul(D_inv, A)
 
     return T
+
+
+def laplacian_matrix(A, version='normal'):
+    '''
+    Function to get the laplacian matrix of a network.
+    A : (n, n) ndarray OR dict
+        Either the adjaency matrix of the the network (ndarray) or the full
+        dictionary storing a network's information (dict, see load_data.py).
+    version : str
+        Version of the Laplacian matrix that is to be computed. The available
+        options are 'normal' : simple laplacian [L = D-A]; 'rw' : random-walk
+        laplacian [L = I - inv(D)A] or 'normalized' : normalized laplacian.
+    '''
+
+    if isinstance(A, dict):
+        A = A["adj"]
+
+    D = np.diag(np.sum(A, axis=0))
+    L = D-A
+
+    if version == 'rw':
+        L = np.matmul(np.linalg.matrix_power(D, -1), L)
+
+    if version == 'normalized':
+        D_minus_half = fractional_matrix_power(D, -0.5)
+        L = np.matmul(D_minus_half, L)
+        L = np.matmul(L, D_minus_half)
+
+    return L
 
 
 def random_walk(A, p0, n):

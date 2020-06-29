@@ -25,32 +25,46 @@ def load_genes(parcel, data="lau", hemi="both", path=None):
     '''
     mainPath = path+"/GeneExpression/"
 
-    GENE = {}
+    # Dictionary storing gene information for the network
+    G = {}
 
     if hemi == "both":
         hemi = ''
 
     # Gene names
-    path = mainPath+"GeneNames.npy"
+    path = mainPath+"gene_names_"+parcel+hemi+".npy"
     if os.path.exists(path):
         # (all)
-        GENE["names"] = np.load(path, allow_pickle=True).tolist()
+        G["names"] = np.load(path, allow_pickle=True).tolist()
         # (brain)
-        GENE["names_brain"] = abagen.fetch_gene_group('brain')
-        geneBrainsID = np.isin(GENE["names"], GENE["names_brain"])
-        GENE["names_brain"] = np.array(GENE["names"])[geneBrainsID].tolist()
+        G["names_brain"] = abagen.fetch_gene_group('brain')
+        geneBrainsID = np.isin(G["names"], G["names_brain"])
+        G["names_brain"] = np.array(G["names"])[geneBrainsID].tolist()
 
     # Gene expression
-    path = mainPath+"Gene_"+parcel+hemi+".npy"
+    path = mainPath+"gene_"+parcel+hemi+".npy"
     if os.path.exists(path):
-        GENE["ex"] = np.load(path)
-        GENE["ex_brain"] = GENE["ex"][:, geneBrainsID]
+        # (all)
+        G["ex"] = np.load(path)
+        # (brain)
+        G["ex_brain"] = G["ex"][:, geneBrainsID]
 
     # Principal components
-    GENE["PCs"], GENE["PC_evs"] = getPCAgene(GENE["ex"].T)
-    GENE["PCs_brain"], GENE["PC_evs_brain"] = getPCAgene(GENE["ex_brain"].T)
+    if "ex" in G:
+        # (all)
+        G["PCs"], G["PC_evs"] = getPCAgene(G["ex"].T)
+        # (brain)
+        G["PCs_brain"], G["PC_evs_brain"] = getPCAgene(G["ex_brain"].T)
 
-    return GENE
+    # Differential stability
+    path = mainPath+"DS_"+parcel+hemi+".npy"
+    if os.path.exists(path):
+        # (all)
+        G['DS'] = np.load(path)
+        # (brain)
+        G["DS_brain"] = G['DS'][geneBrainsID]
+
+    return G
 
 
 def load_annotations(parcel, data="lau", hemi="both",

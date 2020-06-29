@@ -22,6 +22,8 @@ def get_color_distribution(scores, cmap="viridis", vmin=None, vmax=None):
 
     if vmin != vmax:
         scaled = (scores - vmin)/(vmax - vmin) * 255
+        scaled[scaled < 0] = 0
+        scaled[scaled > 255] = 255
     else:
         scaled = np.zeros((n)) + 128
 
