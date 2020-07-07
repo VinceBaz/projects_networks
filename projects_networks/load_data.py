@@ -230,7 +230,7 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
         print("shortest path not found")
         print("computing shortest path...")
 
-        Network["sp"] = bct.distance_wei(Network["adj"])[0]
+        Network["sp"] = bct.distance_wei(Network["inv_adj"])[0]
         np.save(matrixPath+"/sp.npy", Network["sp"])
 
     elif os.path.getmtime(path) < last_modified:
@@ -238,7 +238,7 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
         print("new adjacency matrix was found")
         print("computing shortest paths...")
 
-        Network["sp"] = bct.distance_wei(Network["adj"])[0]
+        Network["sp"] = bct.distance_wei(Network["inv_adj"])[0]
         np.save(matrixPath+"/sp.npy", Network["sp"])
 
     else:
@@ -266,13 +266,13 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
 
         print("betweenness centrality not found")
         print("computing betweenness centrality...")
-        Network["bc"] = bct.betweenness_wei(Network["adj"])
+        Network["bc"] = bct.betweenness_wei(Network["inv_adj"])
         np.save(matrixPath+"/bc.npy", Network["bc"])
 
     elif os.path.getmtime(path) < last_modified:
         print("new adjacency matrix was found")
         print("recomputing betweeness centrality...")
-        Network["bc"] = bct.betweenness_wei(Network["adj"])
+        Network["bc"] = bct.betweenness_wei(Network["inv_adj"])
         np.save(matrixPath+"/bc.npy", Network["bc"])
 
     else:
