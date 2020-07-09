@@ -355,7 +355,8 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     Network['node_mask'] = get_node_mask(Network)
 
     # ROI names
-    Network['ROInames'] = get_ROInames(Network)
+    if parcel[0] != "s":
+        Network['ROInames'] = get_ROInames(Network)
 
     return Network
 
@@ -372,34 +373,48 @@ def parcel_to_n(parcel):
     return mapping[parcel]
 
 
-def get_node_mask(Network, path='../data'):
+def get_node_mask(N, path='../data'):
     '''
     Function to get a mask of the nodes of this particular network (1), given
     the original parcellation (0).
     '''
 
-    matricesPath = path+"/brainNetworks/lau/matrices"
+    n = len(N['adj'])
+    mask = np.zeros((n), dtype=bool)
+    network_hemi = N['info']['hemi']
 
-    with open(matricesPath+"/general_info/hemi.pkl", "rb") as handle:
-        hemi = pickle.load(handle)
-    hemi = hemi[Network['cammoun_id']].reshape(-1)
+    if N['info']['data'] == 'lau':
 
-    with open(matricesPath+"/general_info/subcortexNodes.pkl", "rb") as handle:
-        subcortexNodes = pickle.load(handle)
-    subcortexNodes = subcortexNodes[Network['cammoun_id']]
-    node_type = np.zeros(len(hemi))
-    node_type[subcortexNodes] = 1
+        info_path = path+"/brainNetworks/lau/matrices/general_info"
 
-    network_hemi = Network['info']['hemi']
+        with open(info_path+"/hemi.pkl", "rb") as handle:
+            hemi = pickle.load(handle)
+        hemi = hemi[N['cammoun_id']].reshape(-1)
 
-    if network_hemi == 'L':
-        network_nodes = np.where((hemi == 1) & (node_type == 0))[0]
-    elif network_hemi == 'R':
-        network_nodes = np.where((hemi == 0) & (node_type == 0))[0]
-    else:
-        network_nodes = np.where((node_type == 0))[0]
+        with open(info_path+"/subcortexNodes.pkl", "rb") as handle:
+            subcortexNodes = pickle.load(handle)
+        subcortexNodes = subcortexNodes[N['cammoun_id']]
+        node_type = np.zeros(n)
+        node_type[subcortexNodes] = 1
 
-    mask = np.zeros((len(hemi)), dtype=bool)
+        if network_hemi == 'L':
+            network_nodes = np.where((hemi == 1) & (node_type == 0))[0]
+        elif network_hemi == 'R':
+            network_nodes = np.where((hemi == 0) & (node_type == 0))[0]
+        else:
+            network_nodes = np.where((node_type == 0))[0]
+
+    elif N['info']['data'] == 'HCP':
+
+        hemi = N['hemi']
+
+        if network_hemi == 'L':
+            network_nodes = np.where((hemi == 1))[0]
+        elif network_hemi == 'R':
+            network_nodes = np.where((hemi == 0))[0]
+        else:
+            network_nodes = np.arange(n)
+
     mask[network_nodes] = True
 
     return mask
