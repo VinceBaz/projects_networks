@@ -13,6 +13,7 @@ import numpy as np
 import tqdm
 from scipy.linalg import fractional_matrix_power
 
+
 def transition_matrix(A):
     """
     Function to get the transition matrix (A.K.A. prabability or Markov matrix)

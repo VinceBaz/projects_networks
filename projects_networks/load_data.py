@@ -378,9 +378,6 @@ def get_node_mask(N, path='../data'):
     Function to get a mask of the nodes of this particular network (1), given
     the original parcellation (0).
     '''
-
-    n = len(N['adj'])
-    mask = np.zeros((n), dtype=bool)
     network_hemi = N['info']['hemi']
 
     if N['info']['data'] == 'lau':
@@ -394,6 +391,10 @@ def get_node_mask(N, path='../data'):
         with open(info_path+"/subcortexNodes.pkl", "rb") as handle:
             subcortexNodes = pickle.load(handle)
         subcortexNodes = subcortexNodes[N['cammoun_id']]
+
+        n = len(hemi)
+        mask = np.zeros((n), dtype=bool)
+
         node_type = np.zeros(n)
         node_type[subcortexNodes] = 1
 
@@ -406,6 +407,8 @@ def get_node_mask(N, path='../data'):
 
     elif N['info']['data'] == 'HCP':
 
+        n = len(N['adj'])
+        mask = np.zeros((n), dtype=bool)
         hemi = N['hemi']
 
         if network_hemi == 'L':
