@@ -123,7 +123,8 @@ def plot_brain_dot(scores, coords, label=None, min_color=None,
 def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                  edge_alpha=0.25, edge_vmin=None, edge_vmax=None,
                  node_cmap="viridis", node_vmin=None, node_vmax=None,
-                 linewidth=0.25, s=100, projection=None, view="sagittal"):
+                 linewidth=0.25, s=100, projection=None, view="sagittal",
+                 view_edge=True):
 
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection=projection)
@@ -145,19 +146,20 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
     if projection is None:
 
         # Plot the edges
-        for edge_i, edge_j, c in zip(Edges[0], Edges[1], edge_colors):
+        if view_edge:
+            for edge_i, edge_j, c in zip(Edges[0], Edges[1], edge_colors):
 
-            x1 = coords[edge_i, 0]
-            x2 = coords[edge_j, 0]
-            y1 = coords[edge_i, 1]
-            y2 = coords[edge_j, 1]
+                x1 = coords[edge_i, 0]
+                x2 = coords[edge_j, 0]
+                y1 = coords[edge_i, 1]
+                y2 = coords[edge_j, 1]
 
-            ax.plot([x1, x2],
-                    [y1, y2],
-                    c=c,
-                    linewidth=linewidth,
-                    alpha=edge_alpha,
-                    zorder=0)
+                ax.plot([x1, x2],
+                        [y1, y2],
+                        c=c,
+                        linewidth=linewidth,
+                        alpha=edge_alpha,
+                        zorder=0)
 
         # plot the nodes
         ax.scatter(coords[:, 0],
@@ -191,13 +193,14 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                    vmin=node_vmin,
                    vmax=node_vmax)
 
-        for edge_i, edge_j, c in zip(Edges[0], Edges[1], edge_colors):
-            ax.plot([coords[edge_i, 0], coords[edge_j, 0]],
-                    [coords[edge_i, 1], coords[edge_j, 1]],
-                    [coords[edge_i, 2], coords[edge_j, 2]],
-                    c=c,
-                    linewidth=linewidth,
-                    zorder=0)
+        if view_edge:
+            for edge_i, edge_j, c in zip(Edges[0], Edges[1], edge_colors):
+                ax.plot([coords[edge_i, 0], coords[edge_j, 0]],
+                        [coords[edge_i, 1], coords[edge_j, 1]],
+                        [coords[edge_i, 2], coords[edge_j, 2]],
+                        c=c,
+                        linewidth=linewidth,
+                        zorder=0)
 
         scaling = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
         ax.auto_scale_xyz(*[[np.min(scaling), np.max(scaling)]]*3)

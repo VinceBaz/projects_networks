@@ -250,6 +250,9 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     Network["de"] = de[0]
     Network["de_extra"] = de[1]
 
+    # Principal components
+    Network['PCs'], Network['PCs_ev'] = getPCs(Network['adj'])
+
     # eigenvector centrality
     Network["ec"] = bct.eigenvector_centrality_und(A)
 
@@ -542,3 +545,12 @@ def getPCAgene(genes, return_scores=False):
         return PCs, ev
     else:
         return PCs, ev, scores
+
+
+def getPCs(A, n_components=10):
+    "Function to get the principal components of a matrix"
+    pca = PCA(n_components=n_components)
+    pca.fit(A)
+    ev = pca.explained_variance_ratio_
+    PCs = pca.components_
+    return PCs, ev
