@@ -290,6 +290,9 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     # subgraph centrality
     Network["subc"] = bct.subgraph_centrality(Network["adj"])
 
+    # closeness centrality
+    Network['clo'] = 1/np.mean(Network['sp'], axis=0)
+
     # communities + participation coefficient
     path = matrixPath+"/communities/"
     if os.path.exists(path):
