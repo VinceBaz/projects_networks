@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import numbers
 from netneurotools.plotting import plot_fsaverage as p_fsa
 from netneurotools.datasets import fetch_cammoun2012, fetch_schaefer2018
 from . import colors
@@ -124,7 +125,7 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                  edge_alpha=0.25, edge_vmin=None, edge_vmax=None,
                  node_cmap="viridis", node_vmin=None, node_vmax=None,
                  linewidth=0.25, s=100, projection=None, view="sagittal",
-                 view_edge=True):
+                 view_edge=True, ordered_node=False):
 
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection=projection)
@@ -162,14 +163,29 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                         zorder=0)
 
         # plot the nodes
-        ax.scatter(coords[:, 0],
-                   coords[:, 1],
-                   c=node_scores,
-                   cmap=node_cmap,
-                   vmin=node_vmin,
-                   vmax=node_vmax,
-                   s=s,
-                   zorder=1)
+        if ordered_node is False:
+            ax.scatter(coords[:, 0],
+                       coords[:, 1],
+                       c=node_scores,
+                       cmap=node_cmap,
+                       vmin=node_vmin,
+                       vmax=node_vmax,
+                       s=s,
+                       zorder=1)
+        else:
+            order = np.argsort(node_scores)
+            if isinstance(s, numbers.Number):
+                ss = s
+            else:
+                ss = s[order]
+            ax.scatter(coords[order, 0],
+                       coords[order, 1],
+                       c=node_scores[order],
+                       cmap=node_cmap,
+                       vmin=node_vmin,
+                       vmax=node_vmax,
+                       s=ss,
+                       zorder=1)
         ax.set_aspect('equal')
 
     elif projection == "3d":

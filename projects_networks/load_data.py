@@ -15,11 +15,12 @@ from mapalign.embed import compute_diffusion_map
 import os
 import abagen
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 import pickle
 import pandas as pd
 
 
-def load_genes(parcel, data="lau", hemi="both", path=None):
+def load_genes(parcel, data="lau", hemi="both", path=None, PC_scaled=True):
     '''
     Load gene-related information
     '''
@@ -52,9 +53,11 @@ def load_genes(parcel, data="lau", hemi="both", path=None):
     # Principal components
     if "ex" in G:
         # (all)
-        G["PCs"], G["PC_evs"] = getPCAgene(G["ex"].T)
+        G["PCs"], G["PC_evs"] = getPCAgene(G["ex"],
+                                           scaled=PC_scaled)
         # (brain)
-        G["PCs_brain"], G["PC_evs_brain"] = getPCAgene(G["ex_brain"].T)
+        G["PCs_brain"], G["PC_evs_brain"] = getPCAgene(G["ex_brain"],
+                                                       scaled=PC_scaled)
 
     # Differential stability
     path = mainPath+"DS_"+parcel+hemi+".npy"
@@ -358,7 +361,7 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
         Network['cammoun_id'] = n
 
     # Node mask
-    Network['node_mask'] = get_node_mask(Network)
+    Network['node_mask'] = get_node_mask(Network, path=mainPath)
 
     # ROI names
     if parcel[0] != "s":
@@ -379,7 +382,7 @@ def parcel_to_n(parcel):
     return mapping[parcel]
 
 
-def get_node_mask(N, path='../data'):
+def get_node_mask(N, path="../data/brainNetworks/lau"):
     '''
     Function to get a mask of the nodes of this particular network (1), given
     the original parcellation (0).
@@ -388,7 +391,7 @@ def get_node_mask(N, path='../data'):
 
     if N['info']['data'] == 'lau':
 
-        info_path = path+"/brainNetworks/lau/matrices/general_info"
+        info_path = path+"/matrices/general_info"
 
         with open(info_path+"/hemi.pkl", "rb") as handle:
             hemi = pickle.load(handle)
@@ -528,19 +531,30 @@ def get_ROInames(Network, path=None):
     return ROInames
 
 
-def getPCAgene(genes, return_scores=False):
+def getPCAgene(genes, scaled=True, return_scores=False):
     '''
     Function to compute the Principal components of our
     [genes x brain regions] matrix (see Burt et al., 2018).
+
+    Parameters
     -----------
     INPUTS:
         genes -> gene expression data, [ndarray; shape:(n_nodes, n_genes)]
-    OUTPUTS:
+
+    Returns
+    -------
         PCs -> PCs of gene expression [ndarray; shape:(10, n_nodes)]
         ev  -> Explained variance ratio for PCs
     '''
+
+    genes = genes.copy()
+
+    if scaled:
+        scaler = StandardScaler()
+        genes = scaler.fit_transform(genes)
+
     pca = PCA(n_components=10)
-    scores = pca.fit_transform(genes)
+    scores = pca.fit_transform(genes.T)
     ev = pca.explained_variance_ratio_
     PCs = pca.components_
 
