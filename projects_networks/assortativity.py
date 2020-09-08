@@ -175,13 +175,17 @@ def globalAssort_fast(A, M, m, edges):
 def globalAssort(A, M, method="pearson", debugInfo=False):
     """
     Function to compute the global assortativity of a BINARY network
-    INPUTS:
-        A   -> Adjacency Matrix of the Binary Network
-        M   -> Node Properties. Can be an (n,) ndarray, an (n,p) ndarray,
-               where n is the number of nodes and p is the number of attributes
-               or a tuple of two (n,) ndarrays
+    Parameters
+    ----------
+        A : (n,n) ndarray
+            Adjacency Matrix of the Binary Network of n nodes.
+        M  : (n,) or (n,p) ndarray or tuple
+            Node Properties. Can be an (n,) ndarray, an (n,p) ndarray,
+            where n is the number of nodes and p is the number of attributes
+            or a tuple of two (n,) ndarrays.
 
-    RETURNS:
+    Returns
+    -------
         If M is a tuple or an (n,) array, returns a scalar value, corresponding
         to the global assortativity measure of the attribute. If the shape is
         (n,p), return a (p,p) matrix of the co-assortativity values between

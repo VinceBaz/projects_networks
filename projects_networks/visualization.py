@@ -8,7 +8,7 @@ from . import colors
 
 
 def plot_brain_surface(values, network, hemi="L", cmap="viridis",
-                       colorbar=True, center=None, vmin=None, vmax=None):
+                       colorbar=True, centered=False, vmin=None, vmax=None):
     '''
     Function to plot data on the brain, on a surface parcellation.
 
@@ -42,11 +42,17 @@ def plot_brain_surface(values, network, hemi="L", cmap="viridis",
         fetch_cammoun2012(version='fsaverage')
         fetch_schaefer2018()
 
-    if vmin is None:
+    # Adjust colormap based on parameters
+    if centered is True:
+        m = max(abs(np.amin(values)), np.amax(values))
+        vmin = -m
+        vmax = m
+    elif vmin is None:
         vmin = np.amin(values)
-    if vmax is None:
+    elif vmax is None:
         vmax = np.amax(values)
 
+    # Plot the brain surface
     im = p_fsa(values,
                lhannot=lh,
                rhannot=rh,
@@ -56,8 +62,7 @@ def plot_brain_surface(values, network, hemi="L", cmap="viridis",
                vmin=vmin,
                vmax=vmax,
                colormap=cmap,
-               colorbar=colorbar,
-               center=center)
+               colorbar=colorbar)
 
     return im
 
