@@ -33,7 +33,7 @@ def load_genes(parcel, data="lau", hemi="both", path=None, PC_scaled=True):
         hemi = ''
 
     # Gene names
-    path = mainPath+"gene_names_"+parcel+hemi+".npy"
+    path = mainPath+"name_genes_"+parcel+hemi+".npy"
     if os.path.exists(path):
         # (all)
         G["names"] = np.load(path, allow_pickle=True).tolist()
