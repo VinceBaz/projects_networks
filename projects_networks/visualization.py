@@ -47,10 +47,11 @@ def plot_brain_surface(values, network, hemi="L", cmap="viridis",
         m = max(abs(np.amin(values)), np.amax(values))
         vmin = -m
         vmax = m
-    elif vmin is None:
-        vmin = np.amin(values)
-    elif vmax is None:
-        vmax = np.amax(values)
+    else:
+        if vmin is None:
+            vmin = np.amin(values)
+        if vmax is None:
+            vmax = np.amax(values)
 
     # Plot the brain surface
     im = p_fsa(values,
