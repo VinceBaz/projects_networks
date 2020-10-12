@@ -122,6 +122,14 @@ def load_annotations(parcel, data="lau", hemi="both",
     if os.path.exists(path):
         ANN["thi"] = np.mean(np.load(path), axis=0)
 
+    # Functional activation matrix
+    path = mainPath+"../../neurosynth/parcellated/"+parcel+hemi+".npy"
+    if os.path.exists(path):
+        ANN["fa"] = np.load(path)
+
+        # Functional activation PCs
+        ANN['fa_PCs'], ANN['fa_PCs_ev'] = getPCAgene(ANN["fa"], scaled=True)
+
     return ANN
 
 
