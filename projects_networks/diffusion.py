@@ -133,7 +133,7 @@ def getPageRankWeights(A, i, pr, maxIter=1000):
         Adjacency matrix representation of the network of interest, where
         n is the number of nodes in the network.
     i : int
-        Index of the node of interest.
+        Index of the seed node.
     pr : float
         Damping factor (One minus the probability of restart). Must be between
         0 and 1.

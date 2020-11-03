@@ -113,12 +113,12 @@ def load_annotations(parcel, data="lau", hemi="both",
         ANN["spin"] = np.load(path)
 
     # Morphometric property (T1w/T2w)
-    path = mainPath+"annotations/"+subset+"_T1wT2w_"+parcel+hemi+".npy"
+    path = mainPath+"annotations/T1wT2w/"+subset+"_"+parcel+hemi+".npy"
     if os.path.exists(path):
         ANN["t1t2"] = np.mean(np.load(path), axis=0)
 
     # Morphometric property (Thickness)
-    path = mainPath+"annotations/"+subset+"_Thi_"+parcel+hemi+".npy"
+    path = mainPath+"annotations/thi/"+subset+"_"+parcel+hemi+".npy"
     if os.path.exists(path):
         ANN["thi"] = np.mean(np.load(path), axis=0)
 
@@ -193,19 +193,19 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     if hemi == "both":
         hemi = ''
 
-    mainPath = path+"/brainNetworks/"+data+"/"
     matrixPath = mainPath+"matrices/"+subset+kind+parcel+hemi+binary+version
 
     # hemisphere
     Network["hemi"] = np.load(matrixPath+"/hemi.npy")
 
     # Adjacency matrix
-    #
-    # [look at time when file was last modified]
     path = matrixPath+".npy"
     A = np.load(path)
+
+    # Look at time when file was last modified
     last_modified = os.path.getmtime(path)
-    # [set negative values to 0, fill diagonal, make symmetric]
+
+    # set negative values to 0, fill diagonal, make symmetric
     A[A < 0] = 0
     np.fill_diagonal(A, 0)
     A = (A + A.T)/2

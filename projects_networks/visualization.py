@@ -7,8 +7,9 @@ from netneurotools.datasets import fetch_cammoun2012, fetch_schaefer2018
 from . import colors
 
 
-def plot_brain_surface(values, network, hemi="L", cmap="viridis",
-                       colorbar=True, centered=False, vmin=None, vmax=None):
+def plot_brain_surface(values, network, hemi="L", cmap="viridis", alpha=0.8,
+                       colorbar=True, centered=False, vmin=None, vmax=None,
+                       representation='surface'):
     '''
     Function to plot data on the brain, on a surface parcellation.
 
@@ -63,7 +64,10 @@ def plot_brain_surface(values, network, hemi="L", cmap="viridis",
                vmin=vmin,
                vmax=vmax,
                colormap=cmap,
-               colorbar=colorbar)
+               alpha=alpha,
+               colorbar=colorbar,
+               data_kws={'representation': representation},
+               show_toolbar=True)
 
     return im
 
