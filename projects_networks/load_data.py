@@ -323,7 +323,8 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
 
     if (data == "HCP") and (kind == "SC"):
         path = mainPath+"matrices/"+subset+kind+parcel+hemi+"_lengths.npy"
-        Network["lengths"] = np.load(path)
+        if os.path.exists(path) is True:
+            Network["lengths"] = np.load(path)
 
     # streamline connection lengths
     path = matrixPath+"/len.npy"

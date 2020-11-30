@@ -5,6 +5,7 @@ import numbers
 from netneurotools.plotting import plot_fsaverage as p_fsa
 from netneurotools.datasets import fetch_cammoun2012, fetch_schaefer2018
 from . import colors
+from mpl_toolkits.mplot3d import Axes3D
 
 
 def plot_brain_surface(values, network, hemi="L", cmap="viridis", alpha=0.8,
@@ -133,9 +134,10 @@ def plot_brain_dot(scores, coords, label=None, min_color=None,
 
 def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                  edge_alpha=0.25, edge_vmin=None, edge_vmax=None,
-                 node_cmap="viridis", node_vmin=None, node_vmax=None,
-                 linewidth=0.25, s=100, projection=None, view="sagittal",
-                 view_edge=True, ordered_node=False):
+                 node_cmap="viridis", node_alpha=1, node_vmin=None,
+                 node_vmax=None, linewidth=0.25, s=100, projection=None,
+                 view="sagittal", view_edge=True, ordered_node=False,
+                 axis=False):
 
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection=projection)
@@ -180,42 +182,59 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                        cmap=node_cmap,
                        vmin=node_vmin,
                        vmax=node_vmax,
+                       # alpha=node_alpha,
                        s=s,
                        zorder=1)
+
         else:
             order = np.argsort(node_scores)
+
+            # Order the colors and the sizes so that they match the scores
             if isinstance(s, numbers.Number):
-                ss = s
+                ordered_s = s
             else:
-                ss = s[order]
+                ordered_s = s[order]
+            if isinstance(node_scores, str):
+                ordered_c = node_scores
+                print("Warning!!! You cannot order scores that don't exist")
+            else:
+                ordered_c = node_scores[order]
+
+            # Plot the nodes
             ax.scatter(coords[order, 0],
                        coords[order, 1],
-                       c=node_scores[order],
+                       c=ordered_c,
+                       edgecolors='none',
                        cmap=node_cmap,
                        vmin=node_vmin,
                        vmax=node_vmax,
-                       s=ss,
+                       # alpha=node_alpha,
+                       s=ordered_s,
                        zorder=1)
         ax.set_aspect('equal')
 
     elif projection == "3d":
 
-        # axial view of the brain
-        if view == "axial":
-            ax.view_init(90, 0)
+        if isinstance(view, str):
+            # axial view of the brain
+            if view == "axial":
+                ax.view_init(90, 0)
 
-        # sagittal view of the brain
-        elif view == "sagittal":
-            ax.view_init(0, 0)
+            # sagittal view of the brain
+            elif view == "sagittal":
+                ax.view_init(0, 0)
+        else:
+            ax.view_init(view[0], view[1])
 
         ax.scatter(coords[:, 0],
                    coords[:, 1],
                    coords[:, 2],
                    c=node_scores,
+                   cmap=node_cmap,
+                   edgecolors='none',
                    s=s,
                    zorder=1,
                    depthshade=False,
-                   cmap=node_cmap,
                    vmin=node_vmin,
                    vmax=node_vmax)
 
@@ -231,6 +250,7 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
         scaling = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
         ax.auto_scale_xyz(*[[np.min(scaling), np.max(scaling)]]*3)
 
-    ax.axis('off')
+    if not axis:
+        ax.axis('off')
 
     return fig

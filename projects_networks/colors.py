@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib as mpl
 from matplotlib import cm
-from matplotlib.colors import ListedColormap
+from matplotlib.colors import ListedColormap, to_rgba
 
 
 def get_color_distribution(scores, cmap="viridis", vmin=None, vmax=None):
@@ -58,3 +58,18 @@ def get_cmap(colorList):
     cmap = ListedColormap(c_all)
 
     return cmap
+
+
+def cmap_ignore_negative(cmap, ignored_color='lightgray'):
+    '''
+    Function to get a colormap with the negative scores being a different
+    color that is not part of the colormap (e.g. lightgray).
+    '''
+    newcolors = np.zeros((256, 4))
+    spectral_4 = cm.get_cmap(cmap, 128)
+    newcolors[128:, :] = spectral_4(np.linspace(0, 1, 128))
+    lightgray = np.array(to_rgba(ignored_color))
+    newcolors[:128, :] = lightgray
+    newcmp = ListedColormap(newcolors)
+
+    return newcmp
