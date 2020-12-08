@@ -383,10 +383,15 @@ def parcel_to_n(parcel):
 
     mapping = {}
     mapping["68"] = "033"
+    mapping['83'] = "033"
     mapping["114"] = "060"
+    mapping['129'] = '060'
     mapping["219"] = "125"
+    mapping['234'] = '125'
     mapping["448"] = "250"
+    mapping['463'] = '250'
     mapping["1000"] = "500"
+    mapping['1015'] = '500'
 
     return mapping[parcel]
 
@@ -402,10 +407,12 @@ def get_node_mask(N, path="../data/brainNetworks/lau"):
 
         info_path = path+"/matrices/general_info"
 
+        # Load info about which nodes are in which hemisphere
         with open(info_path+"/hemi.pkl", "rb") as handle:
             hemi = pickle.load(handle)
         hemi = hemi[N['cammoun_id']].reshape(-1)
 
+        # Load info about which nodes are in the subcortex
         with open(info_path+"/subcortexNodes.pkl", "rb") as handle:
             subcortexNodes = pickle.load(handle)
         subcortexNodes = subcortexNodes[N['cammoun_id']]
@@ -413,15 +420,28 @@ def get_node_mask(N, path="../data/brainNetworks/lau"):
         n = len(hemi)
         mask = np.zeros((n), dtype=bool)
 
+        # Figure out whether this parcellation contains the subcortex
+        subcortex = False
+        if N["info"]["parcel"] in ['83', '129', '234', '463', '1015']:
+            subcortex = True
+
         node_type = np.zeros(n)
         node_type[subcortexNodes] = 1
 
-        if network_hemi == 'L':
-            network_nodes = np.where((hemi == 1) & (node_type == 0))[0]
-        elif network_hemi == 'R':
-            network_nodes = np.where((hemi == 0) & (node_type == 0))[0]
-        else:
-            network_nodes = np.where((node_type == 0))[0]
+        if subcortex is False:
+            if network_hemi == 'L':
+                network_nodes = np.where((hemi == 1) & (node_type == 0))[0]
+            elif network_hemi == 'R':
+                network_nodes = np.where((hemi == 0) & (node_type == 0))[0]
+            else:
+                network_nodes = np.where((node_type == 0))[0]
+        elif subcortex is True:
+            if network_hemi == 'L':
+                network_nodes = np.where(hemi == 1)[0]
+            elif network_hemi == 'R':
+                network_nodes = np.where(hemi == 0)[0]
+            else:
+                network_nodes = np.ones((n), dtype=bool)
 
     elif N['info']['data'] == 'HCP':
 
