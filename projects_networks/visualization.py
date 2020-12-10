@@ -106,7 +106,8 @@ def plot_brain_dot(scores, coords, label=None, min_color=None,
                                 vmax=max_color,
                                 s=size,
                                 cmap=colormap,
-                                edgecolors='k',
+                                edgecolors=None,
+                                rasterized=True,
                                 norm=norm)
 
         ax[k].view_init(orienX[k], orienY[k])
@@ -143,7 +144,10 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
     ax = fig.add_subplot(111, projection=projection)
 
     # Identify all of the edges in the network and get their colors
-    Edges = np.where(G["adj"] > 0)
+    if isinstance(G, dict):
+        G = G['adj']
+
+    Edges = np.where(G > 0)
 
     if edge_scores is None:
         edge_colors = np.full((len(Edges[0])), "black", dtype="<U10")

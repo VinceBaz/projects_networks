@@ -2,7 +2,7 @@
 """
 Created on Tue Mar 17 16:12:05 2020
 
-Code to load network-related data from a "data" folder stored locally
+Code to load brain network data from a "data" folder stored locally
 into an easy to use python dictionary.
 
 @author: Vincent Bazinet
@@ -18,119 +18,6 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import pickle
 import pandas as pd
-
-
-def load_genes(parcel, data="lau", hemi="both", path=None, PC_scaled=True):
-    '''
-    Load gene-related information
-    '''
-    mainPath = path+"/GeneExpression/"
-
-    # Dictionary storing gene information for the network
-    G = {}
-
-    if hemi == "both":
-        hemi = ''
-
-    # Gene names
-    path = mainPath+"name_genes_"+parcel+hemi+".npy"
-    if os.path.exists(path):
-        # (all)
-        G["names"] = np.load(path, allow_pickle=True).tolist()
-        # (brain)
-        G["names_brain"] = abagen.fetch_gene_group('brain')
-        geneBrainsID = np.isin(G["names"], G["names_brain"])
-        G["names_brain"] = np.array(G["names"])[geneBrainsID].tolist()
-
-    # Gene expression
-    path = mainPath+"gene_"+parcel+hemi+".npy"
-    if os.path.exists(path):
-        # (all)
-        G["ex"] = np.load(path)
-        # (brain)
-        G["ex_brain"] = G["ex"][:, geneBrainsID]
-
-    # Principal components
-    if "ex" in G:
-        # (all)
-        G["PCs"], G["PC_evs"] = getPCAgene(G["ex"],
-                                           scaled=PC_scaled)
-        # (brain)
-        G["PCs_brain"], G["PC_evs_brain"] = getPCAgene(G["ex_brain"],
-                                                       scaled=PC_scaled)
-
-    # Differential stability
-    path = mainPath+"DS_"+parcel+hemi+".npy"
-    if os.path.exists(path):
-        # (all)
-        G['DS'] = np.load(path)
-        # (brain)
-        G["DS_brain"] = G['DS'][geneBrainsID]
-
-    return G
-
-
-def load_annotations(parcel, data="lau", hemi="both",
-                     subset="all", path=None):
-    '''
-    Load non-topological annotations as well as some tools useful
-    for investigating these annotations (e.g. spin samples)
-    '''
-
-    mainPath = path+"/brainNetworks/"+data+"/"
-
-    ANN = {}
-
-    if subset == "all":
-        subset = ''
-
-    if hemi == "both":
-        hemi = ''
-
-    # RSN
-    path = mainPath+"annotations/RSN"+parcel+hemi+".npy"
-    if os.path.exists(path):
-        ANN["RSN"] = np.load(path)
-
-    # RSN names
-    path = mainPath+"annotations/RSN_names.npy"
-    if os.path.exists(path):
-        ANN["RSN_names"] = np.load(path).tolist()
-
-    # VonEconomo type
-    path = mainPath+"annotations/VE"+parcel+hemi+".npy"
-    if os.path.exists(path):
-        ANN["ve"] = np.load(path)
-
-    # Von Economo names
-    path = mainPath+"annotations/VE_names.npy"
-    if os.path.exists(path):
-        ANN["ve_names"] = np.load(path).tolist()
-
-    # Spin tests
-    path = mainPath+"surrogates/spins_"+parcel+hemi+".npy"
-    if os.path.exists(path):
-        ANN["spin"] = np.load(path)
-
-    # Morphometric property (T1w/T2w)
-    path = mainPath+"annotations/T1wT2w/"+subset+"_"+parcel+hemi+".npy"
-    if os.path.exists(path):
-        ANN["t1t2"] = np.mean(np.load(path), axis=0)
-
-    # Morphometric property (Thickness)
-    path = mainPath+"annotations/thi/"+subset+"_"+parcel+hemi+".npy"
-    if os.path.exists(path):
-        ANN["thi"] = np.mean(np.load(path), axis=0)
-
-    # Functional activation matrix
-    path = mainPath+"../../neurosynth/parcellated/"+parcel+hemi+".npy"
-    if os.path.exists(path):
-        ANN["fa"] = np.load(path)
-
-        # Functional activation PCs
-        ANN['fa_PCs'], ANN['fa_PCs_ev'] = getPCAgene(ANN["fa"], scaled=True)
-
-    return ANN
 
 
 def load_network(kind, parcel, data="lau", hemi="both", binary=False,
@@ -163,11 +50,8 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
         Dictionary storing relevant attributes about the network
     '''
 
-    mainPath = path+"/brainNetworks/"+data+"/"
-    home = os.path.expanduser("~")
-
+    # Initialize dictionary + store basic information about the network
     Network = {}
-
     Network["info"] = {}
     Network["info"]["kind"] = kind
     Network["info"]["parcel"] = parcel
@@ -177,43 +61,75 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     Network["info"]["version"] = version
     Network["info"]["subset"] = subset
 
-    if version == 1:
-        version = ''
-    else:
-        version = "_v2"
+    # Modify parameter names to what they are in file names
+    version = '' if version == 1 else "_v2"
+    binary = 'b' if binary is True else ''
+    subset = '' if subset == 'all' else subset
+    hemi = '' if hemi == 'both' else hemi
 
-    if binary is True:
-        binary = "b"
-    else:
-        binary = ''
-
-    if subset == "all":
-        subset = ''
-
-    if hemi == "both":
-        hemi = ''
-
+    # Store important paths for loading the relevant data
+    mainPath = path+"/brainNetworks/"+data+"/"
+    home = os.path.expanduser("~")
     matrixPath = mainPath+"matrices/"+subset+kind+parcel+hemi+binary+version
 
+    # Store general information about the network
+    if parcel[0] == "s":
+        n = parcel[1:]
+        Network["order"] = "LR"
+        Network["noplot"] = [b'Background+FreeSurfer_Defined_Medial_Wall',
+                             b'']
+        Network["lhannot"] = (home+"/"
+                              "nnt-data/"
+                              "atl-schaefer2018/"
+                              "fsaverage/"
+                              "atl-Schaefer2018_space-fsaverage_"
+                              "hemi-L_desc-"+n+"Parcels7Networks_"
+                              "deterministic.annot")
+        Network["rhannot"] = (home+"/"
+                              "nnt-data/"
+                              "atl-schaefer2018/"
+                              "fsaverage/"
+                              "atl-Schaefer2018_space-fsaverage_"
+                              "hemi-R_desc-"+n+"Parcels7Networks_"
+                              "deterministic.annot")
+    else:
+        n = parcel_to_n(parcel)
+        Network["order"] = "RL"
+        Network["noplot"] = None
+        Network["lhannot"] = (home+"/"
+                              "nnt-data/"
+                              "atl-cammoun2012/"
+                              "fsaverage/"
+                              "atl-Cammoun2012_space-fsaverage_"
+                              "res-"+n+"_hemi-L_deterministic.annot")
+        Network["rhannot"] = (home+"/"
+                              "nnt-data/"
+                              "atl-cammoun2012/"
+                              "fsaverage/"
+                              "atl-Cammoun2012_space-fsaverage_"
+                              "res-"+n+"_hemi-R_deterministic.annot")
+        Network['cammoun_id'] = n
+
+    # Node mask
+    Network['node_mask'] = get_node_mask(Network, path=mainPath)
+
     # hemisphere
-    Network["hemi"] = np.load(matrixPath+"/hemi.npy")
+    Network['hemi'] = get_hemi(Network, path=mainPath)
+
+    # coordinates
+    Network['coords'] = get_coordinates(Network, path=mainPath)
 
     # Adjacency matrix
     path = matrixPath+".npy"
-    A = np.load(path)
+    last_modified = os.path.getmtime(path)  # Store time when last modified
 
-    # Look at time when file was last modified
-    last_modified = os.path.getmtime(path)
+    A = np.load(path)
 
     # set negative values to 0, fill diagonal, make symmetric
     A[A < 0] = 0
     np.fill_diagonal(A, 0)
     A = (A + A.T)/2
     Network["adj"] = A
-
-    # coordinates
-    path = mainPath+"coords/coords"+parcel+hemi+".npy"
-    Network["coords"] = np.load(path)
 
     # node strength
     Network["str"] = np.sum(A, axis=0)
@@ -331,52 +247,137 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     if os.path.exists(path) is True:
         Network['len'] = np.load(path)
 
-    # network information
-    if parcel[0] == "s":
-        n = parcel[1:]
-        Network["order"] = "LR"
-        Network["noplot"] = [b'Background+FreeSurfer_Defined_Medial_Wall',
-                             b'']
-        Network["lhannot"] = (home+"/"
-                              "nnt-data/"
-                              "atl-schaefer2018/"
-                              "fsaverage/"
-                              "atl-Schaefer2018_space-fsaverage_"
-                              "hemi-L_desc-"+n+"Parcels7Networks_"
-                              "deterministic.annot")
-        Network["rhannot"] = (home+"/"
-                              "nnt-data/"
-                              "atl-schaefer2018/"
-                              "fsaverage/"
-                              "atl-Schaefer2018_space-fsaverage_"
-                              "hemi-R_desc-"+n+"Parcels7Networks_"
-                              "deterministic.annot")
-    else:
-        n = parcel_to_n(parcel)
-        Network["order"] = "RL"
-        Network["noplot"] = None
-        Network["lhannot"] = (home+"/"
-                              "nnt-data/"
-                              "atl-cammoun2012/"
-                              "fsaverage/"
-                              "atl-Cammoun2012_space-fsaverage_"
-                              "res-"+n+"_hemi-L_deterministic.annot")
-        Network["rhannot"] = (home+"/"
-                              "nnt-data/"
-                              "atl-cammoun2012/"
-                              "fsaverage/"
-                              "atl-Cammoun2012_space-fsaverage_"
-                              "res-"+n+"_hemi-R_deterministic.annot")
-        Network['cammoun_id'] = n
-
-    # Node mask
-    Network['node_mask'] = get_node_mask(Network, path=mainPath)
-
     # ROI names
     if parcel[0] != "s":
         Network['ROInames'] = get_ROInames(Network)
 
+    # geodesic distances between nodes
+    if parcel[0] == "s":
+        n = parcel[1:]
+        fname_l = n + "Parcels7Networks_lh_dist.csv"
+        fname_r = n + "Parcels7Networks_lh_dist.csv"
+    else:
+        fname_l = "scale" + Network['cammoun_id'] + "_lh_dist.csv"
+        fname_r = "scale" + Network['cammoun_id'] + "_rh_dist.csv"
+    Network['geo_dist_L'] = pd.read_csv(mainPath+"/geodesic/medial/" + fname_l,
+                                        header=None).values
+    Network['geo_dist_R'] = pd.read_csv(mainPath+"/geodesic/medial/" + fname_r,
+                                        header=None).values
+
     return Network
+
+
+def load_genes(parcel, data="lau", hemi="both", path=None, PC_scaled=True):
+    '''
+    Load gene-related information
+    '''
+    mainPath = path+"/GeneExpression/"
+
+    # Dictionary storing gene information for the network
+    G = {}
+
+    if hemi == "both":
+        hemi = ''
+
+    # Gene names
+    path = mainPath+"name_genes_"+parcel+hemi+".npy"
+    if os.path.exists(path):
+        # (all)
+        G["names"] = np.load(path, allow_pickle=True).tolist()
+        # (brain)
+        G["names_brain"] = abagen.fetch_gene_group('brain')
+        geneBrainsID = np.isin(G["names"], G["names_brain"])
+        G["names_brain"] = np.array(G["names"])[geneBrainsID].tolist()
+
+    # Gene expression
+    path = mainPath+"gene_"+parcel+hemi+".npy"
+    if os.path.exists(path):
+        # (all)
+        G["ex"] = np.load(path)
+        # (brain)
+        G["ex_brain"] = G["ex"][:, geneBrainsID]
+
+    # Principal components
+    if "ex" in G:
+        # (all)
+        G["PCs"], G["PC_evs"] = getPCAgene(G["ex"],
+                                           scaled=PC_scaled)
+        # (brain)
+        G["PCs_brain"], G["PC_evs_brain"] = getPCAgene(G["ex_brain"],
+                                                       scaled=PC_scaled)
+
+    # Differential stability
+    path = mainPath+"DS_"+parcel+hemi+".npy"
+    if os.path.exists(path):
+        # (all)
+        G['DS'] = np.load(path)
+        # (brain)
+        G["DS_brain"] = G['DS'][geneBrainsID]
+
+    return G
+
+
+def load_annotations(parcel, data="lau", hemi="both",
+                     subset="all", path=None):
+    '''
+    Load non-topological annotations as well as some tools useful
+    for investigating these annotations (e.g. spin samples)
+    '''
+
+    mainPath = path+"/brainNetworks/"+data+"/"
+
+    ANN = {}
+
+    if subset == "all":
+        subset = ''
+
+    if hemi == "both":
+        hemi = ''
+
+    # RSN
+    path = mainPath+"annotations/RSN"+parcel+hemi+".npy"
+    if os.path.exists(path):
+        ANN["RSN"] = np.load(path)
+
+    # RSN names
+    path = mainPath+"annotations/RSN_names.npy"
+    if os.path.exists(path):
+        ANN["RSN_names"] = np.load(path).tolist()
+
+    # VonEconomo type
+    path = mainPath+"annotations/VE"+parcel+hemi+".npy"
+    if os.path.exists(path):
+        ANN["ve"] = np.load(path)
+
+    # Von Economo names
+    path = mainPath+"annotations/VE_names.npy"
+    if os.path.exists(path):
+        ANN["ve_names"] = np.load(path).tolist()
+
+    # Spin tests
+    path = mainPath+"surrogates/spins_"+parcel+hemi+".npy"
+    if os.path.exists(path):
+        ANN["spin"] = np.load(path)
+
+    # Morphometric property (T1w/T2w)
+    path = mainPath+"annotations/T1wT2w/"+subset+"_"+parcel+hemi+".npy"
+    if os.path.exists(path):
+        ANN["t1t2"] = np.mean(np.load(path), axis=0)
+
+    # Morphometric property (Thickness)
+    path = mainPath+"annotations/thi/"+subset+"_"+parcel+hemi+".npy"
+    if os.path.exists(path):
+        ANN["thi"] = np.mean(np.load(path), axis=0)
+
+    # Functional activation matrix
+    path = mainPath+"../../neurosynth/parcellated/"+parcel+hemi+".npy"
+    if os.path.exists(path):
+        ANN["fa"] = np.load(path)
+
+        # Functional activation PCs
+        ANN['fa_PCs'], ANN['fa_PCs_ev'] = getPCAgene(ANN["fa"], scaled=True)
+
+    return ANN
 
 
 def parcel_to_n(parcel):
@@ -396,69 +397,106 @@ def parcel_to_n(parcel):
     return mapping[parcel]
 
 
+def get_coordinates(Network, path='../data/brainNetworks/lau'):
+    '''
+    Function to get the coordinates of the nodes in the network
+    '''
+
+    # Get node mask of network
+    mask = Network['node_mask']
+
+    # Get some information about the network of interest (HCP or lau)
+    network_data = Network['info']['data']
+
+    # Store path to the .npy coordinate file
+    if network_data == 'lau':
+        path = path + "coords/coords" + Network['cammoun_id'] + '.npy'
+    elif network_data == 'HCP':
+        path = path + "coords/coords" + Network['info']['parcel'] + '.npy'
+
+    coords = np.load(path)
+
+    return coords[mask, :]
+
+
 def get_node_mask(N, path="../data/brainNetworks/lau"):
     '''
     Function to get a mask of the nodes of this particular network (1), given
     the original parcellation (0).
     '''
+
+    # Load info about our network
     network_hemi = N['info']['hemi']
+    network_data = N['info']['data']
 
-    if N['info']['data'] == 'lau':
+    # Load general info about which nodes are in which hemisphere
+    info_path = path + "/matrices/general_info"
+    hemi = _load_hemi_info(N, info_path, network_data)
 
-        info_path = path+"/matrices/general_info"
+    # Initialize mask
+    n = len(hemi)
+    mask = np.zeros((n), dtype=bool)
 
-        # Load info about which nodes are in which hemisphere
-        with open(info_path+"/hemi.pkl", "rb") as handle:
-            hemi = pickle.load(handle)
-        hemi = hemi[N['cammoun_id']].reshape(-1)
+    # Initialize node_type (cortex vs. subcortex) to 0/cortex everywhere
+    node_type = np.zeros((n))
+
+    if network_data == 'lau':
 
         # Load info about which nodes are in the subcortex
         with open(info_path+"/subcortexNodes.pkl", "rb") as handle:
             subcortexNodes = pickle.load(handle)
         subcortexNodes = subcortexNodes[N['cammoun_id']]
 
-        n = len(hemi)
-        mask = np.zeros((n), dtype=bool)
-
         # Figure out whether this parcellation contains the subcortex
         subcortex = False
         if N["info"]["parcel"] in ['83', '129', '234', '463', '1015']:
             subcortex = True
 
-        node_type = np.zeros(n)
         node_type[subcortexNodes] = 1
 
-        if subcortex is False:
-            if network_hemi == 'L':
-                network_nodes = np.where((hemi == 1) & (node_type == 0))[0]
-            elif network_hemi == 'R':
-                network_nodes = np.where((hemi == 0) & (node_type == 0))[0]
-            else:
-                network_nodes = np.where((node_type == 0))[0]
-        elif subcortex is True:
-            if network_hemi == 'L':
-                network_nodes = np.where(hemi == 1)[0]
-            elif network_hemi == 'R':
-                network_nodes = np.where(hemi == 0)[0]
-            else:
-                network_nodes = np.ones((n), dtype=bool)
+    elif network_data == 'HCP':
 
-    elif N['info']['data'] == 'HCP':
+        # HCP data (Schaefer) does not have subcortical nodes so...
+        subcortex = False
 
-        n = len(N['adj'])
-        mask = np.zeros((n), dtype=bool)
-        hemi = N['hemi']
-
+    if subcortex is False:
         if network_hemi == 'L':
-            network_nodes = np.where((hemi == 1))[0]
+            network_nodes = np.where((hemi == 1) & (node_type == 0))[0]
         elif network_hemi == 'R':
-            network_nodes = np.where((hemi == 0))[0]
+            network_nodes = np.where((hemi == 0) & (node_type == 0))[0]
         else:
-            network_nodes = np.arange(n)
+            network_nodes = np.where((node_type == 0))[0]
+    elif subcortex is True:
+        if network_hemi == 'L':
+            network_nodes = np.where(hemi == 1)[0]
+        elif network_hemi == 'R':
+            network_nodes = np.where(hemi == 0)[0]
+        else:
+            network_nodes = np.ones((n), dtype=bool)
 
     mask[network_nodes] = True
 
     return mask
+
+
+def get_hemi(Network, path="../data/brainNetworks/lau"):
+    '''
+    Function to get hemisphere information for the nodes in the network.
+    This hemispheric information is viewed as an annotation. In other words
+    the information is only given for the nodes of the network (so we rely on
+    our network's 'node_mask' to extract the nodes of interest)
+    '''
+    # Get node mask of network
+    mask = Network['node_mask']
+
+    # Get some information about the network of interest (HCP or lau)
+    network_data = Network['info']['data']
+
+    # Get information about hemispheres for the given parcellation
+    info_path = path + "/matrices/general_info"
+    hemi = _load_hemi_info(Network, info_path, network_data)
+
+    return hemi[mask]
 
 
 def get_streamline_length(Network, path='../data'):
@@ -600,3 +638,15 @@ def getPCs(A, n_components=10):
     ev = pca.explained_variance_ratio_
     PCs = pca.components_
     return PCs, ev
+
+
+def _load_hemi_info(Network, info_path, network_data):
+
+    with open(info_path+"/hemi.pkl", "rb") as handle:
+        hemi = pickle.load(handle)
+    if network_data == 'lau':
+        hemi = hemi[Network['cammoun_id']].reshape(-1)
+    elif network_data == 'HCP':
+        hemi = hemi[Network['info']['parcel'][1:]]
+
+    return hemi
