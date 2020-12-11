@@ -110,8 +110,11 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
                               "res-"+n+"_hemi-R_deterministic.annot")
         Network['cammoun_id'] = n
 
-    # Node mask
-    Network['node_mask'] = get_node_mask(Network, path=mainPath)
+    # masks
+    masks = get_node_masks(Network, path=mainPath)
+    Network['node_mask'] = masks[0]
+    Network['hemi_mask'] = masks[1]
+    Network['subcortex_mask'] = masks[2]
 
     # hemisphere
     Network['hemi'] = get_hemi(Network, path=mainPath)
@@ -419,64 +422,61 @@ def get_coordinates(Network, path='../data/brainNetworks/lau'):
     return coords[mask, :]
 
 
-def get_node_mask(N, path="../data/brainNetworks/lau"):
+def get_node_masks(N, path="../data/brainNetworks/lau"):
     '''
     Function to get a mask of the nodes of this particular network (1), given
     the original parcellation (0).
     '''
 
-    # Load info about our network
+    # Load info about the network
     network_hemi = N['info']['hemi']
     network_data = N['info']['data']
 
-    # Load general info about which nodes are in which hemisphere
+    # Load general info about hemispheres and subcortex
     info_path = path + "/matrices/general_info"
-    hemi = _load_hemi_info(N, info_path, network_data)
+    hemi_mask = _load_hemi_info(N, info_path, network_data)
+    subcortex_nodes = _load_subcortex_info(N, info_path, network_data)
 
-    # Initialize mask
-    n = len(hemi)
-    mask = np.zeros((n), dtype=bool)
+    # Initialize node mask
+    n = len(hemi_mask)
+    node_mask = np.zeros((n), dtype=bool)
 
-    # Initialize node_type (cortex vs. subcortex) to 0/cortex everywhere
-    node_type = np.zeros((n))
+    # Get subcortex mask
+    subcortex_mask = np.zeros((n), dtype=bool)
+    subcortex_mask[subcortex_nodes] = True
 
+    # Figure out whether this parcellation contains the subcortex
+    subcortex = False
     if network_data == 'lau':
-
-        # Load info about which nodes are in the subcortex
-        with open(info_path+"/subcortexNodes.pkl", "rb") as handle:
-            subcortexNodes = pickle.load(handle)
-        subcortexNodes = subcortexNodes[N['cammoun_id']]
-
-        # Figure out whether this parcellation contains the subcortex
-        subcortex = False
         if N["info"]["parcel"] in ['83', '129', '234', '463', '1015']:
             subcortex = True
 
-        node_type[subcortexNodes] = 1
-
-    elif network_data == 'HCP':
-
-        # HCP data (Schaefer) does not have subcortical nodes so...
-        subcortex = False
-
+    # Get a list of indices of the nodes in the network
     if subcortex is False:
+
         if network_hemi == 'L':
-            network_nodes = np.where((hemi == 1) & (node_type == 0))[0]
+            nodes = np.where((hemi_mask == 1) & (subcortex_mask == 0))[0]
+
         elif network_hemi == 'R':
-            network_nodes = np.where((hemi == 0) & (node_type == 0))[0]
-        else:
-            network_nodes = np.where((node_type == 0))[0]
+            nodes = np.where((hemi_mask == 0) & (subcortex_mask == 0))[0]
+
+        elif network_hemi == 'both':
+            nodes = np.where((subcortex_mask == 0))[0]
+
     elif subcortex is True:
+
         if network_hemi == 'L':
-            network_nodes = np.where(hemi == 1)[0]
+            nodes = np.where(hemi_mask == 1)[0]
+
         elif network_hemi == 'R':
-            network_nodes = np.where(hemi == 0)[0]
-        else:
-            network_nodes = np.ones((n), dtype=bool)
+            nodes = np.where(hemi_mask == 0)[0]
 
-    mask[network_nodes] = True
+        elif network_hemi == 'both':
+            nodes = np.ones((n), dtype=bool)
 
-    return mask
+    node_mask[nodes] = True
+
+    return node_mask, hemi_mask, subcortex_mask
 
 
 def get_hemi(Network, path="../data/brainNetworks/lau"):
@@ -650,3 +650,15 @@ def _load_hemi_info(Network, info_path, network_data):
         hemi = hemi[Network['info']['parcel'][1:]]
 
     return hemi
+
+
+def _load_subcortex_info(Network, info_path, network_data):
+
+    with open(info_path+"/subcortexNodes.pkl", "rb") as handle:
+        subcortex = pickle.load(handle)
+    if network_data == 'lau':
+        subcortex = subcortex[Network['cammoun_id']]
+    elif network_data == 'HCP':
+        subcortex = subcortex[Network['info']['parcel'][1:]]
+
+    return subcortex

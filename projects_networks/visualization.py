@@ -5,7 +5,7 @@ import numbers
 from netneurotools.plotting import plot_fsaverage as p_fsa
 from netneurotools.datasets import fetch_cammoun2012, fetch_schaefer2018
 from . import colors
-from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D  # noqa
 
 
 def plot_brain_surface(values, network, hemi="L", cmap="viridis", alpha=0.8,
@@ -24,15 +24,16 @@ def plot_brain_surface(values, network, hemi="L", cmap="viridis", alpha=0.8,
         used to identify the adequate surface parcellation)
     '''
 
-    n = len(network["hemi"])
+    cortical_hemi_mask = network['hemi_mask'][network['subcortex_mask'] == 0]
+    n = len(cortical_hemi_mask)
 
     if (hemi == "L"):
         scores = np.zeros((n))+np.mean(values)
-        scores[network["hemi"] == 1] = values
+        scores[cortical_hemi_mask == 1] = values
         values = scores
     elif (hemi == "R"):
         scores = np.zeros((n))+np.mean(values)
-        scores[network["hemi"] == 0] = values
+        scores[cortical_hemi_mask == 0] = values
         values = scores
 
     order = network["order"]
@@ -257,4 +258,4 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
     if not axis:
         ax.axis('off')
 
-    return fig
+    return fig, ax
