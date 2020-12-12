@@ -123,30 +123,23 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     Network['coords'] = get_coordinates(Network, path=mainPath)
 
     # Adjacency matrix
-    path = matrixPath+".npy"
-    last_modified = os.path.getmtime(path)  # Store time when last modified
-
-    A = np.load(path)
-
-    # set negative values to 0, fill diagonal, make symmetric
-    A[A < 0] = 0
-    np.fill_diagonal(A, 0)
-    A = (A + A.T)/2
-    Network["adj"] = A
+    Network['adj'], last_modified = get_adjacency(Network, matrixPath,
+                                                  minimal_processing=True,
+                                                  return_last_modified=True)
 
     # node strength
-    Network["str"] = np.sum(A, axis=0)
+    Network["str"] = np.sum(Network['adj'], axis=0)
 
     # Inverse of adjacency matrix
-    inv = A.copy()
-    inv[A > 0] = 1/inv[A > 0]
+    inv = Network['adj'].copy()
+    inv[Network['adj'] > 0] = 1/inv[Network['adj'] > 0]
     Network["inv_adj"] = inv
 
     # distance
     Network["dist"] = cdist(Network["coords"], Network["coords"])
 
     # clustering coefficient
-    Network["cc"] = bct.clustering_coef_wu(A)
+    Network["cc"] = bct.clustering_coef_wu(Network['adj'])
 
     # shortest path
     #
@@ -176,7 +169,9 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
         Network["sp"] = np.load(path)
 
     # diffusion embedding
-    de = compute_diffusion_map(A, n_components=10, return_result=True)
+    de = compute_diffusion_map(Network['adj'],
+                               n_components=10,
+                               return_result=True)
     Network["de"] = de[0]
     Network["de_extra"] = de[1]
 
@@ -184,10 +179,10 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     Network['PCs'], Network['PCs_ev'] = getPCs(Network['adj'])
 
     # eigenvector centrality
-    Network["ec"] = bct.eigenvector_centrality_und(A)
+    Network["ec"] = bct.eigenvector_centrality_und(Network['adj'])
 
     # mean first passage time
-    Network["mfpt"] = bct.mean_first_passage_time(A)
+    Network["mfpt"] = bct.mean_first_passage_time(Network['adj'])
 
     # betweenness centrality
     #
@@ -237,7 +232,7 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
 
             Network["ppc"] = []
             for i in range(len(files)):
-                ppc = bct.participation_coef(A, Network["ci"][i])
+                ppc = bct.participation_coef(Network['adj'], Network["ci"][i])
                 Network["ppc"].append(ppc)
 
     if (data == "HCP") and (kind == "SC"):
@@ -398,6 +393,29 @@ def parcel_to_n(parcel):
     mapping['1015'] = '500'
 
     return mapping[parcel]
+
+
+def get_adjacency(Network, matrix_path, minimal_processing=True,
+                  return_last_modified=True):
+
+    path = matrix_path + ".npy"
+
+    # Load adjacency matrix
+    A = np.load(path)
+
+    # Store time when last modified
+    last_modified = os.path.getmtime(path)
+
+    if minimal_processing:
+        # set negative values to 0, fill diagonal, make symmetric
+        A[A < 0] = 0
+        np.fill_diagonal(A, 0)
+        A = (A + A.T)/2
+
+    if return_last_modified:
+        return A, last_modified
+    else:
+        return A
 
 
 def get_coordinates(Network, path='../data/brainNetworks/lau'):
