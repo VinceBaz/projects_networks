@@ -12,6 +12,7 @@ Last updated on: 2020/04/25
 import numpy as np
 import tqdm
 from scipy.linalg import fractional_matrix_power
+from scipy.linalg import expm
 
 
 def transition_matrix(A):
@@ -70,6 +71,26 @@ def laplacian_matrix(A, version='normal'):
         L = np.matmul(L, D_minus_half)
 
     return L
+
+
+def diffuse(network, ts, laplacian='normal', verbose=False):
+
+    if isinstance(network, dict):
+        A = network['adj']
+    else:
+        A = network
+
+    k = len(ts)
+    n = len(A)
+    pr = np.zeros((k, n, n))
+
+    # Compute the random-walk Laplacian of graph
+    L = laplacian_matrix(A, version=laplacian)
+
+    for i in tqdm.trange(k) if verbose else range(k):
+        pr[i, :, :] = expm(-1 * ts[i] * L)
+
+    return pr
 
 
 def random_walk(A, p0, n):
@@ -184,12 +205,13 @@ def getPageRankWeights(A, i, pr, maxIter=1000):
         T += (F-Fold)/((it+1)*(pr**it))
 
         it += 1
-        if it > maxIter:
-            print(i, "max iterations exceeded")
-            diff = 0
 
         diff = np.sum((F-Fold)**2)
         Fold = F.copy()
+
+        if it > maxIter:
+            print(i, "max iterations exceeded")
+            diff = 0
 
     return F, T, it
 

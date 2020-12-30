@@ -187,6 +187,7 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                        cmap=node_cmap,
                        vmin=node_vmin,
                        vmax=node_vmax,
+                       clip_on=False,
                        # alpha=node_alpha,
                        s=s,
                        zorder=1)
