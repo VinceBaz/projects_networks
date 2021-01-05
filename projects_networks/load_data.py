@@ -480,7 +480,7 @@ def get_node_masks(N, path="../data/brainNetworks/lau"):
     # Load general info about hemispheres and subcortex
     info_path = path + "/matrices/general_info"
     hemi_mask = _load_hemi_info(network_parcel, info_path)
-    subcortex_nodes = _load_subcortex_info(N, info_path, network_data)
+    subcortex_nodes = _load_subcortex_info(network_parcel, info_path)
 
     # Initialize node mask
     n = len(hemi_mask)
@@ -699,13 +699,15 @@ def _load_hemi_info(parcel, info_path):
     return hemi
 
 
-def _load_subcortex_info(Network, info_path, network_data):
+def _load_subcortex_info(parcel, info_path):
 
     with open(info_path+"/subcortexNodes.pkl", "rb") as handle:
         subcortex = pickle.load(handle)
-    if network_data == 'lau':
-        subcortex = subcortex[Network['cammoun_id']]
-    elif network_data == 'HCP':
-        subcortex = subcortex[Network['info']['parcel'][1:]]
+
+    if parcel[0] == 's':
+        subcortex = subcortex[parcel[1:]]
+    else:
+        n = parcel_to_n(parcel)
+        subcortex = subcortex[n]
 
     return subcortex

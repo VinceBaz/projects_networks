@@ -90,8 +90,13 @@ def generate_spins(parcel, lhannot, rhannot, order, info_path, hemi='',
                                                    rhannot=rhannot)
     spins_LR = gen_spinsamples(coords, hemi_centroids, n_rotate=k)
 
-    # Get some info about which parcel is in which hemisphere
+    # Get some info about hemispheres and subcortex
     hemi_info = load_data._load_hemi_info(parcel, info_path)
+    sub_info = load_data._load_subcortex_info(parcel, info_path)
+
+    # Remove subcortex info from hemi_info (spins are only on the surface)
+    hemi_info = np.delete(hemi_info, sub_info)
+
     R_id = np.where(hemi_info == 0)[0]
     L_id = np.where(hemi_info == 1)[0]
     n_R = len(R_id)
