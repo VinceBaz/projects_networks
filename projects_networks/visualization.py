@@ -6,6 +6,7 @@ from netneurotools.plotting import plot_fsaverage as p_fsa
 from netneurotools.datasets import fetch_cammoun2012, fetch_schaefer2018
 from . import colors
 from mpl_toolkits.mplot3d import Axes3D  # noqa
+import warnings
 
 
 def plot_brain_surface(values, network, hemi="L", cmap="viridis", alpha=0.8,
@@ -139,17 +140,33 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                  node_cmap="viridis", node_alpha=1, node_vmin=None,
                  node_vmax=None, linewidth=0.25, s=100, projection=None,
                  view="sagittal", view_edge=True, ordered_node=False,
-                 axis=False):
+                 axis=False, directed=False):
+    '''
+    Function to draw (plot) a network of nodes and edges.
+
+    Parameters
+    ----------
+    G : dict or (n,n) ndarray
+        Dictionary storing general information about the network we wish to
+        plot or an (n,n) ndarray storing the adjacency matrix of the network.
+        Where 'n' is the number of nodes in the network.
+    '''
+
+    if isinstance(G, dict):
+        G = G['adj']
+
+    if not np.all(G == G.T) & directed:
+        warnings.warn(("network appears to be directed, yet 'directed' "
+                       "parameter was set to 'False'. The values of the edges "
+                       "may be wrong."))
 
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection=projection)
 
-    # Identify all of the edges in the network and get their colors
-    if isinstance(G, dict):
-        G = G['adj']
-
+    # Identify all the edges in the network
     Edges = np.where(G > 0)
 
+    # Get the color of the edges
     if edge_scores is None:
         edge_colors = np.full((len(Edges[0])), "black", dtype="<U10")
     else:
@@ -172,12 +189,27 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                 y1 = coords[edge_i, 1]
                 y2 = coords[edge_j, 1]
 
-                ax.plot([x1, x2],
-                        [y1, y2],
-                        c=c,
-                        linewidth=linewidth,
-                        alpha=edge_alpha,
-                        zorder=0)
+                if not directed:
+                    ax.plot([x1, x2],
+                            [y1, y2],
+                            c=c,
+                            linewidth=linewidth,
+                            alpha=edge_alpha,
+                            zorder=0)
+                else:
+                    len_x = (x2 - x1)
+                    len_y = (y2 - y1)
+                    ax.arrow(x1,
+                             y1,
+                             dx=len_x * 0.8,
+                             dy=len_y * 0.8,
+                             length_includes_head=True,
+                             shape='left',
+                             width=linewidth*0.1,
+                             head_width=linewidth*0.15,
+                             alpha=edge_alpha,
+                             color=c,
+                             zorder=0)
 
         # plot the nodes
         if ordered_node is False:
