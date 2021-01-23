@@ -10,8 +10,8 @@ from scipy.stats import rankdata
 from . import diffusion as dif
 
 
-def localAssort(A, M, weights=None, pr="multiscale", method="weighted",
-                thorndike=False, return_extra=False, constraint=None):
+def local_assort(A, M, weights=None, pr="multiscale", method="weighted",
+                 thorndike=False, return_extra=False, constraint=None):
     '''
     Function to compute the local assortativity in an undirected network
 
@@ -174,7 +174,9 @@ def globalAssort_fast(A, M, m, edges):
 
 def globalAssort(A, M, method="pearson", debugInfo=False):
     """
-    Function to compute the global assortativity of a BINARY network
+    Function to compute the global assortativity of a BINARY network. This
+    function is slighly faster than weighted_assort as it assumes that
+    all the weights are 1.
     Parameters
     ----------
         A : (n,n) ndarray
@@ -267,22 +269,55 @@ def globalAssort(A, M, method="pearson", debugInfo=False):
         return rglobal, mean, norms, denominator
 
 
-def weightedAssort(A, M, N=None):
-    """
+def weighted_assort(A, M, N=None):
+    '''
     Function to compute the weighted Pearson correlation between the attributes
-    of the nodes connected by edges in a network (This is basically a sort of
-    assortativity measure for WEIGHTED network
-    """
+    of the nodes connected by edges in a network (i.e. weighted assortativity).
+    This function also works for binary networks.
 
-    # Check that M is 1D
-    if M.ndim > 1:
-        raise ValueError("dimension of M must be 1D")
+    Parameters
+    ----------
+    A : (n,n) ndarray
+        Adjacency matrix of our network.
+    M : (n,) ndarray
+        Vector of nodal attributes.
+    N : (n,) ndarray
+        Second vector of nodal attributes (optional)
 
-    Size = len(A)
-    if N is None:
-        return(corr(np.tile(M, (Size, 1)).reshape(-1), np.tile(M, (Size, 1)).T.reshape(-1), A.reshape(-1)))
-    else:
-        return(corr(np.tile(M, (Size, 1)).reshape(-1), np.tile(N, (Size, 1)).T.reshape(-1), A.reshape(-1)))
+    Returns
+    -------
+    ga : float
+        Weighted assortativity of our network, with respect to the vector
+        of attributes
+    '''
+
+    N_nodes = len(A)
+
+    # Normalize the adjacency matrix to make weights sum to 1
+    A_sum1 = A / np.sum(A, axis=None)
+    k_sum1 = np.sum(A_sum1, axis=0)
+
+    # Compute the (weighted) mean and standard deviation of our attributes
+    M_mean = np.sum(k_sum1 * M)
+    M_sd = np.sqrt(np.sum(k_sum1 * ((M-M_mean)**2)))
+
+    # Compute the zscores of our attributes and of each edge "endpoints"
+    zM = (M - M_mean) / M_sd
+    zj = np.tile(zM, (N_nodes, 1))
+    zi = zj.T
+
+    if N is not None:
+        # Do the same thing for our second attribute (if we have a second one)
+        N_mean = np.sum(k_sum1 * N)
+        N_sd = np.sqrt(np.sum(k_sum1 * ((N-N_mean)**2)))
+
+        zN = (N - N_mean) / N_sd
+        zj = np.tile(zN, (N_nodes, 1))
+
+    # Compute the weighted assortativity as a sum of zscores
+    ga = np.sum(A_sum1 * zi * zj, axis=None)
+
+    return ga
 
 
 def thorndike_correct(A, M, assortT, m, x_stds):
@@ -294,18 +329,3 @@ def thorndike_correct(A, M, assortT, m, x_stds):
         thorndike[i] = x_std*assortT[i]/((((x_std**2)*(assortT[i]**2))+(x_stds[i]**2)-((x_stds[i]**2)*(assortT[i]**2)))**(1/2))
 
     return thorndike
-
-
-def m(x, w):
-    """Weighted Mean"""
-    return np.sum(x * w) / np.sum(w)
-
-
-def cov(x, y, w):
-    """Weighted Covariance"""
-    return np.sum(w * (x - m(x, w)) * (y - m(y, w))) / np.sum(w)
-
-
-def corr(x, y, w):
-    """Weighted Correlation"""
-    return cov(x, y, w) / np.sqrt(cov(x, x, w) * cov(y, y, w))

@@ -13,7 +13,15 @@ from mapalign.embed import compute_diffusion_map
 
 
 def generate_network(network_type, lattice_kws=None, ER_kws=None):
+    '''
+    Function to generate networks.
 
+    Parameters
+    ----------
+    network_type : str
+        Name of the network that we wish to generate. The available options are
+        'lattice' and 'weighted_ER'.
+    '''
     Network = {}
 
     if network_type == 'lattice':

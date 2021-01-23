@@ -226,7 +226,7 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     if parcel[0] == "s":
         n = parcel[1:]
         fname_l = n + "Parcels7Networks_lh_dist.csv"
-        fname_r = n + "Parcels7Networks_lh_dist.csv"
+        fname_r = n + "Parcels7Networks_rh_dist.csv"
     else:
         fname_l = "scale" + Network['cammoun_id'] + "_lh_dist.csv"
         fname_r = "scale" + Network['cammoun_id'] + "_rh_dist.csv"
