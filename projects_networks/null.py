@@ -13,11 +13,11 @@ def assort_preserv_swap(A, M, g, epsilon=0.0001):
     Parameters
     ----------
     A : (N_nodes, N_nodes) ndarray
-        Adjacency matrix of the network
+        Adjacency matrix of the network.
     M : (N_nodes,) ndarray
-        Vector of node attributes
+        Vector of node attributes.
     g : float
-        Global assortativity score that we want
+        Global assortativity score that we want.
     '''
 
     # Gather information about the network

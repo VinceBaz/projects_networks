@@ -294,28 +294,30 @@ def weighted_assort(A, M, N=None):
     N_nodes = len(A)
 
     # Normalize the adjacency matrix to make weights sum to 1
-    A_sum1 = A / np.sum(A, axis=None)
-    k_sum1 = np.sum(A_sum1, axis=0)
+    A_norm = A / np.sum(A, axis=None)
+    k_norm = np.sum(A_norm, axis=0)
 
     # Compute the (weighted) mean and standard deviation of our attributes
-    M_mean = np.sum(k_sum1 * M)
-    M_sd = np.sqrt(np.sum(k_sum1 * ((M-M_mean)**2)))
+    M_mean = np.sum(k_norm * M)
+    M_sd = np.sqrt(np.sum(k_norm * ((M-M_mean)**2)))
 
     # Compute the zscores of our attributes and of each edge "endpoints"
     zM = (M - M_mean) / M_sd
-    zj = np.tile(zM, (N_nodes, 1))
-    zi = zj.T
+    zj = np.repeat(zM[np.newaxis, :], N_nodes, axis=0)
 
     if N is not None:
         # Do the same thing for our second attribute (if we have a second one)
-        N_mean = np.sum(k_sum1 * N)
-        N_sd = np.sqrt(np.sum(k_sum1 * ((N-N_mean)**2)))
+        N_mean = np.sum(k_norm * N)
+        N_sd = np.sqrt(np.sum(k_norm * ((N-N_mean)**2)))
 
         zN = (N - N_mean) / N_sd
-        zj = np.tile(zN, (N_nodes, 1))
+        zi = np.repeat(zN[:, np.newaxis], N_nodes, axis=1)
+    else:
+        # Otherwise, take the transform of the zj matrix
+        zi = zj.T
 
     # Compute the weighted assortativity as a sum of zscores
-    ga = np.sum(A_sum1 * zi * zj, axis=None)
+    ga = (A_norm * zi * zj).sum()
 
     return ga
 

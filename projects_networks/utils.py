@@ -61,6 +61,15 @@ def mask(network, other_networks=None, with_diag=False, type="all"):
     return mask
 
 
+def scale(values, vmin, vmax):
+
+    s = (values - values.min()) / (values.max() - values.min())
+    s = s * (vmax - vmin)
+    s = s + vmin
+
+    return s
+
+
 def isBipartite(A):
     '''
     Function to check if a network is Bipartite

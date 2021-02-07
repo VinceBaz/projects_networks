@@ -70,7 +70,9 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
 
     # Store important paths for loading the relevant data
     mainPath = path+"/brainNetworks/"+data+"/"
-    matrixPath = mainPath+"matrices/"+subset+kind+parcel+hemi+binary+version
+    matrixPath = (mainPath +
+                  "matrices/consensus/" +
+                  subset+kind+parcel+hemi+binary+version)
 
     # Store general information about the network's parcellation
     parcel_info = get_general_parcellation_info(parcel)
@@ -78,6 +80,7 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     Network['noplot'] = parcel_info[1]
     Network['lhannot'] = parcel_info[2]
     Network['rhannot'] = parcel_info[3]
+    Network['atlas'] = parcel_info[4]
 
     # Load the cammoun_id of the parcellation, if Cammoun (i.e. 033, 060, etc.)
     if parcel[0] != 's':
@@ -332,7 +335,7 @@ def load_annotations(parcel, data="lau", hemi="both",
     else:
         print("spun permutation not found...")
         print("computing and saving...")
-        order, _, lhannot, rhannot = get_general_parcellation_info(parcel)
+        order, _, lhannot, rhannot, _ = get_general_parcellation_info(parcel)
         ANN['spin'] = null.generate_spins(parcel, lhannot, rhannot,
                                           order, info_path, hemi=hemi)
         np.save(path, ANN['spin'])
@@ -432,38 +435,47 @@ def get_general_parcellation_info(parcel):
         order = "LR"
         noplot = [b'Background+FreeSurfer_Defined_Medial_Wall',
                   b'']
-        lhannot = (home+"/"
-                   "nnt-data/"
-                   "atl-schaefer2018/"
+        path2files = (home +
+                      '/'
+                      'nnt-data/'
+                      'atl-schaefer2018/')
+        lhannot = (path2files +
                    "fsaverage/"
                    "atl-Schaefer2018_space-fsaverage_"
-                   "hemi-L_desc-"+n+"Parcels7Networks_"
+                   "hemi-L_desc-" + n + "Parcels7Networks_"
                    "deterministic.annot")
-        rhannot = (home+"/"
-                   "nnt-data/"
-                   "atl-schaefer2018/"
+        rhannot = (path2files +
                    "fsaverage/"
                    "atl-Schaefer2018_space-fsaverage_"
-                   "hemi-R_desc-"+n+"Parcels7Networks_"
+                   "hemi-R_desc-" + n + "Parcels7Networks_"
                    "deterministic.annot")
+        atlas = (path2files +
+                 'MNI152/'
+                 'Schaefer2018_' + n + 'Parcels_7Networks_order_'
+                 'FSLMNI152_1mm.nii.gz')
+
     else:
         n = parcel_to_n(parcel)
         order = "RL"
         noplot = None
-        lhannot = (home+"/"
-                   "nnt-data/"
-                   "atl-cammoun2012/"
-                   "fsaverage/"
-                   "atl-Cammoun2012_space-fsaverage_"
-                   "res-"+n+"_hemi-L_deterministic.annot")
-        rhannot = (home+"/"
-                   "nnt-data/"
-                   "atl-cammoun2012/"
-                   "fsaverage/"
-                   "atl-Cammoun2012_space-fsaverage_"
-                   "res-"+n+"_hemi-R_deterministic.annot")
+        path2files = (home +
+                      "/"
+                      "nnt-data/"
+                      'atl-cammoun2012/')
+        lhannot = (path2files +
+                   'fsaverage/'
+                   'atl-Cammoun2012_space-fsaverage_'
+                   'res-' + n + "_hemi-L_deterministic.annot")
+        rhannot = (path2files +
+                   'fsaverage/'
+                   'atl-Cammoun2012_space-fsaverage_'
+                   'res-' + n + "_hemi-R_deterministic.annot")
+        atlas = (path2files +
+                 'MNI152NLin2009aSym/'
+                 'atl-Cammoun2012_space-MNI152NLin2009aSym_res-' +
+                 n + '_deterministic.nii.gz')
 
-    return order, noplot, lhannot, rhannot
+    return order, noplot, lhannot, rhannot, atlas
 
 
 def get_node_masks(N, path="../data/brainNetworks/lau"):

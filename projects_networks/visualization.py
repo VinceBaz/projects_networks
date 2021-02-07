@@ -155,7 +155,7 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
     if isinstance(G, dict):
         G = G['adj']
 
-    if not np.all(G == G.T) & directed:
+    if not np.all(G == G.T) and not directed:
         warnings.warn(("network appears to be directed, yet 'directed' "
                        "parameter was set to 'False'. The values of the edges "
                        "may be wrong."))
@@ -269,10 +269,12 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                    coords[:, 2],
                    c=node_scores,
                    cmap=node_cmap,
-                   edgecolors='none',
+                   #edgecolors='none',
+                   edgecolors='face',
                    s=s,
                    zorder=1,
-                   depthshade=False,
+                   #depthshade=False,
+                   depthshade=True,
                    vmin=node_vmin,
                    vmax=node_vmax)
 

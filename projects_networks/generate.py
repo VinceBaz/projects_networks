@@ -6,24 +6,44 @@ Created on Tue Dec 29 13:58:26 2020
 """
 
 import numpy as np
+import bct
 import networkx as nx
+from fa2 import ForceAtlas2
 from scipy.spatial.distance import cdist
 from . import load_data as ld
 from mapalign.embed import compute_diffusion_map
+from netneurotools.metrics import communicability_wei
 
 
-def generate_network(network_type, lattice_kws=None, ER_kws=None):
+def generate_network(network_type, lattice_kws=None, ER_kws=None, ignore=None):
     '''
     Function to generate networks.
 
     Parameters
     ----------
     network_type : str
-        Name of the network that we wish to generate. The available options are
-        'lattice' and 'weighted_ER'.
+        Name of the network that we wish to generate. Currently, the
+        available options are:
+            'lattice'
+            'weighted_ER'
+            'binary_ER'
+            'assortative_toy'
+            'dissassortative_toy'
+
+    ignore : List
+        List of dictionary entries that are to be ignored when loading
+        the results. Available options are: 'sp' (shortest path).
+    Returns
+    -------
+    Network : dict
+        Dictionary storing relevant information about the generated network.
     '''
     Network = {}
 
+    if ignore is None:
+        ignore = []
+
+    # Part 1: Adjacency matrix and coordinates (when possible)
     if network_type == 'lattice':
 
         n_rows = 10
@@ -37,7 +57,6 @@ def generate_network(network_type, lattice_kws=None, ER_kws=None):
 
         Network['adj'], Network['coords'] = generate_lattice(n_rows, gaps)
         Network['dist'] = cdist(Network['coords'], Network['coords'])
-
     if network_type == 'weighted_ER':
 
         n = 50
@@ -50,7 +69,6 @@ def generate_network(network_type, lattice_kws=None, ER_kws=None):
                 p = ER_kws['p']
 
         Network['adj'] = generate_weighted_ER(n, p)
-
     if network_type == 'binary_ER':
 
         n = 50
@@ -63,13 +81,31 @@ def generate_network(network_type, lattice_kws=None, ER_kws=None):
                 p = ER_kws['p']
 
         Network['adj'] = generate_binary_ER(n, p)
+    if network_type == 'assortative_toy':
+        Network['adj'] = generate_assortative_toy()
+    if network_type == 'disassortative_toy':
+        Network['adj'] = generate_disassortative_toy()
 
-    Network['str'] = np.sum(Network['adj'], axis=0)
+    # Part 2: Topological measures
+    Network['str'] = Network['adj'].sum(axis=0)
+    Network['cc'] = bct.clustering_coef_wu(Network['adj'])
+    Network['subc'] = bct.subgraph_centrality(Network['adj'])
+    Network['ec'] = bct.eigenvector_centrality_und(Network['adj'])
+    Network['com'] = communicability_wei(Network['adj'])
+
+    if 'sp' not in ignore:
+        Network['sp'], _ = bct.distance_wei(Network['adj'])
+        Network['msp'] = Network['sp'].mean(axis=0)
+        Network['r_eff'] = 1/Network['msp']
+
+    # Part 3: Embeddings
     Network['PCs'] = ld.getPCs(Network['adj'])[0]
     de = compute_diffusion_map(Network['adj'],
                                n_components=10,
                                return_result=True)
     Network["de"] = de[0]
+    Network['de_extra'] = de[1]
+    Network['fa'] = _forceAtlasEmbedding(Network, verbose=False)
 
     return Network
 
@@ -142,3 +178,74 @@ def generate_lattice(n_rows, gaps):
     coords = np.delete(coords, np.where(deg == 0)[0], axis=0)
 
     return adjacency, coords
+
+
+def generate_assortative_toy():
+
+    adjacency = np.array([[0,1,1,1,1,1,1,1,0,0,0,0,0,0],
+                          [1,0,1,0,0,0,1,0,0,0,0,0,0,0],
+                          [1,1,0,1,0,0,0,0,0,0,0,0,0,0],
+                          [1,0,1,0,1,0,0,0,0,0,0,0,0,0],
+                          [1,0,0,1,0,1,0,0,0,0,0,0,0,0],
+                          [1,0,0,0,1,0,1,0,0,0,0,0,0,0],
+                          [1,1,0,0,0,1,0,0,0,0,0,0,0,0],
+                          [1,0,0,0,0,0,0,0,1,1,1,1,1,1],
+                          [0,0,0,0,0,0,0,1,0,1,0,0,0,1],
+                          [0,0,0,0,0,0,0,1,1,0,1,0,0,0],
+                          [0,0,0,0,0,0,0,1,0,1,0,1,0,0],
+                          [0,0,0,0,0,0,0,1,0,0,1,0,1,0],
+                          [0,0,0,0,0,0,0,1,0,0,0,1,0,1],
+                          [0,0,0,0,0,0,0,1,1,0,0,0,1,0]])
+
+    return adjacency
+
+
+def generate_disassortative_toy():
+
+    adjacency = np.array([[0,1,1,1,1,1,1,0,0,0,0,0,0,0],
+                          [1,0,1,0,0,0,1,0,1,0,0,0,0,0],
+                          [1,1,0,1,0,0,0,0,0,0,0,0,0,0],
+                          [1,0,1,0,1,0,0,0,0,0,0,0,0,0],
+                          [1,0,0,1,0,1,0,0,0,0,0,0,0,0],
+                          [1,0,0,0,1,0,1,0,0,0,0,0,0,0],
+                          [1,1,0,0,0,1,0,0,0,0,0,0,0,0],
+                          [0,0,0,0,0,0,0,0,1,1,1,1,1,1],
+                          [0,1,0,0,0,0,0,1,0,1,0,0,0,1],
+                          [0,0,0,0,0,0,0,1,1,0,1,0,0,0],
+                          [0,0,0,0,0,0,0,1,0,1,0,1,0,0],
+                          [0,0,0,0,0,0,0,1,0,0,1,0,1,0],
+                          [0,0,0,0,0,0,0,1,0,0,0,1,0,1],
+                          [0,0,0,0,0,0,0,1,1,0,0,0,1,0]])
+
+    return adjacency
+
+
+def _forceAtlasEmbedding(Network, verbose=True, dissuade_hubs=True):
+
+    adj = Network["adj"]
+
+    forceatlas2 = ForceAtlas2(
+                        # Behavior alternatives
+                        outboundAttractionDistribution=dissuade_hubs,  # Dissuade hubs
+                        linLogMode=False,  # NOT IMPLEMENTED
+                        adjustSizes=False,  # Prevent overlap (NOT IMPLEMENTED)
+                        edgeWeightInfluence=5.0,
+
+                        # Performance
+                        jitterTolerance=1.0,  # Tolerance
+                        barnesHutOptimize=True,
+                        barnesHutTheta=1.2,
+                        multiThreaded=False,  # NOT IMPLEMENTED
+
+                        # Tuning
+                        scalingRatio=2.0,
+                        strongGravityMode=False,
+                        gravity=1.0,
+
+                        # Log
+                        verbose=verbose)
+
+    positions = forceatlas2.forceatlas2(adj, pos=None, iterations=2000)
+    position_array = np.array(positions)
+
+    return position_array

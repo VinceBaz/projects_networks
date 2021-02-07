@@ -5,7 +5,7 @@ Functions that are useful for investigating the diffusive architecture of
 networks.
 
 Created on : 2020/03/13
-Last updated on: 2020/04/25
+Last updated on: 2021/02/03
 @author: Vincent Bazinet
 """
 
@@ -74,7 +74,22 @@ def laplacian_matrix(A, version='normal'):
 
 
 def diffuse(network, ts, laplacian='normal', verbose=False):
+    '''
+    Function to simulate diffusion processes on a graph.
 
+    Parameters
+    ----------
+    laplacian : 'normal', 'normalized' or 'rw'
+        The type of Laplacian matrix to use for the diffusion process. If 'rw'
+        is choosen, the diffusion process will be relying on the random-walk
+        laplacian to generate what has been refered to has the 'heat-kernel
+        PageRank' of the network [A1].
+
+    References
+    ----------
+    .. [A1] Chung, F. (2007). The heat kernel as the pagerank of a graph.
+    Proceedings of the National Academy of Sciences, 104(50), 19735-19740.
+    '''
     if isinstance(network, dict):
         A = network['adj']
     else:
