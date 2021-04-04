@@ -9,8 +9,7 @@ Some of these measures might someday be merged into our
 repository, which I invite you to go explore for many more amazing
 tools for network neuroscience.
 
-.. image:: https://codecov.io/gh/VinceBaz/projects_networks/branch/master/graph/badge.svg
-   :target: https://codecov.io/gh/VinceBaz/projects_networks
+[![codecov](https://codecov.io/gh/VinceBaz/projects_networks/branch/master/graph/badge.svg)](https://codecov.io/gh/VinceBaz/projects_networks)
 
 ### CONTENT
 
