@@ -161,18 +161,7 @@ def local_assort(A, M, weights=None, pr="multiscale", method="weighted",
         return assort, w_all
 
 
-def globalAssort_fast(A, M, m, edges):
-    X = (M[:, np.newaxis]*A)[edges]
-    mean = np.mean(X, axis=None)
-    std = np.std(X, axis=None)
-    norms = (M-mean)/std
-    rglobal = np.sum(A * norms[:, np.newaxis] * norms[np.newaxis, :])
-    rglobal = rglobal/m
-
-    return rglobal
-
-
-def globalAssort(A, M, method="pearson", debugInfo=False):
+def global_assort(A, M, method="pearson", debugInfo=False):
     """
     Function to compute the global assortativity of a BINARY network. This
     function is slighly faster than weighted_assort as it assumes that
@@ -301,7 +290,7 @@ def weighted_assort(A, M, N=None):
     M_mean = np.sum(k_norm * M)
     M_sd = np.sqrt(np.sum(k_norm * ((M-M_mean)**2)))
 
-    # Compute the zscores of our attributes and of each edge "endpoints"
+    # Compute the zscores of our attributes for each edge "endpoints"
     zM = (M - M_mean) / M_sd
     zj = np.repeat(zM[np.newaxis, :], N_nodes, axis=0)
 

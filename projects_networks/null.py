@@ -17,7 +17,10 @@ def assort_preserv_swap(A, M, g, epsilon=0.0001):
     M : (N_nodes,) ndarray
         Vector of node attributes.
     g : float
-        Global assortativity score that we want.
+        Global assortativity score that we want (empirical).
+    epsilon : float
+        Error term when calculating the difference between the empirical
+        and the permuted assortativity.
     '''
 
     # Gather information about the network

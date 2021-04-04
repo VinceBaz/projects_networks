@@ -126,3 +126,9 @@ def isBipartite(A):
     # vertices can be colored with alternate
     # color
     return True
+
+
+def get_p_value(perm, emp):
+
+    k = len(perm)
+    return len(np.where(abs(perm-np.mean(perm)) > abs(emp-np.mean(perm)))[0])/k

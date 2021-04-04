@@ -17,6 +17,7 @@ import abagen
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import pickle
+import warnings
 import pandas as pd
 from . import null
 
@@ -37,8 +38,7 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     parcel : string
         Either "68", "114", ... [if 'lau'] / "s400", "s800" [if "HCP"]
     version : int
-        Either 1 (consensus computed without subcortex) or 2 (consensus
-        conputed with subcortex)
+        Version of the network.
     subset : string
         Either 'discov', 'valid' or 'all'
     path : string
@@ -63,7 +63,14 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     Network["info"]["subset"] = subset
 
     # Modify parameter names to what they are in file names
-    version = '' if version == 1 else "_v2"
+    if version == 1:
+        version = ''
+    elif version == 2:
+        version = '_v2'
+    elif version == 3:
+        version = '_v3'
+    elif version == 4:
+        version = '_v4'
     binary = 'b' if binary else ''
     subset = '' if subset == 'all' else subset
     hemi = '' if hemi == 'both' else hemi
@@ -103,6 +110,13 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
                                                   minimal_processing=True,
                                                   return_last_modified=True)
 
+    # Test whether the network is connected. Raise a warning if not...
+    # Its bad if your network isn't connected (and you don't know).
+    if not np.all(bct.reachdist(Network['adj'])[0]):
+        warnings.warn(("This brain network appears to be disconnected. This "
+                       "might cause problem for the computation of the other "
+                       "measures"))
+
     # node strength
     Network["str"] = np.sum(Network['adj'], axis=0)
 
@@ -118,36 +132,14 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     Network["cc"] = bct.clustering_coef_wu(Network['adj'])
 
     # shortest path
-    #
-    # Loaded from saved file...
-    # IF file not found OR Adjacency was modified after creation,
-    # then recompute measure
-    path = matrixPath+"/sp.npy"
-
-    if not os.path.exists(path):
-
-        print("shortest path not found")
-        print("computing shortest path...")
-
-        Network["sp"] = bct.distance_wei(Network["inv_adj"])[0]
-        np.save(matrixPath+"/sp.npy", Network["sp"])
-
-    elif os.path.getmtime(path) < last_modified:
-
-        print("new adjacency matrix was found")
-        print("computing shortest paths...")
-
-        Network["sp"] = bct.distance_wei(Network["inv_adj"])[0]
-        np.save(matrixPath+"/sp.npy", Network["sp"])
-
-    else:
-
-        Network["sp"] = np.load(path)
+    Network['sp'] = get_shortest_path(Network, matrix_path=matrixPath,
+                                      last_modified=last_modified)
 
     # diffusion embedding
     de = compute_diffusion_map(Network['adj'],
                                n_components=10,
-                               return_result=True)
+                               return_result=True,
+                               skip_checks=True)
     Network["de"] = de[0]
     Network["de_extra"] = de[1]
 
@@ -554,6 +546,44 @@ def get_hemi(Network, path="../data/brainNetworks/lau"):
     hemi = _load_hemi_info(network_parcel, info_path)
 
     return hemi[mask]
+
+
+def get_shortest_path(Network, matrix_path=None, last_modified=0):
+    '''
+    Function to get the shortest path of a network. If a matrix_path is given,
+    this function will try to load the shortest path from this matrix path,
+    if the shortest paths have been generated after the adjacency matrix itself
+    has been generetaed.
+    '''
+
+    if matrix_path is not None:
+
+        path = matrix_path + "/sp.npy"
+
+        if not os.path.exists(path):
+
+            print("shortest path not found")
+            print("computing shortest path...")
+
+            sp, _ = bct.distance_wei(Network['inv_adj'])
+            np.save(path, sp)
+
+        elif os.path.getmtime(path) < last_modified:
+
+            print("new adjacency matrix was found")
+            print("computing shortest paths...")
+
+            sp, _ = bct.distance_wei(Network['inv_adj'])
+            np.save(path, sp)
+
+        else:
+
+            sp = np.load(path)
+
+    else:
+        sp, _ = bct.distance_wei(Network['inv_adj'])
+
+    return sp
 
 
 def get_streamline_length(Network, path='../data'):

@@ -5,7 +5,7 @@ Functions that are useful for investigating the diffusive architecture of
 networks.
 
 Created on : 2020/03/13
-Last updated on: 2021/02/03
+Last updated on: 2021/02/21
 @author: Vincent Bazinet
 """
 
@@ -35,11 +35,8 @@ def transition_matrix(A):
     if isinstance(A, dict):
         A = A["adj"]
 
-    deg = np.sum(A, axis=0)
-
-    D = np.diag(deg)
-    D_inv = np.linalg.matrix_power(D, -1)
-    T = np.matmul(D_inv, A)
+    degree = np.sum(A, axis=0)
+    T = A/degree[:, np.newaxis]
 
     return T
 
@@ -47,6 +44,9 @@ def transition_matrix(A):
 def laplacian_matrix(A, version='normal'):
     '''
     Function to get the laplacian matrix of a network.
+
+    Parameters
+    ----------
     A : (n, n) ndarray OR dict
         Either the adjaency matrix of the the network (ndarray) or the full
         dictionary storing a network's information (dict, see load_data.py).
@@ -54,12 +54,24 @@ def laplacian_matrix(A, version='normal'):
         Version of the Laplacian matrix that is to be computed. The available
         options are 'normal' : simple laplacian [L = D-A]; 'rw' : random-walk
         laplacian [L = I - inv(D)A] or 'normalized' : normalized laplacian.
+
+    Returns
+    -------
+    L : (n, n) ndarray
+        The Laplacian matrix of the graph
     '''
+
+    if version not in ['normal', 'rw', 'normalized']:
+        raise ValueError(("The versions of the laplacian matrix are either"
+                          "\'normal\', \'rw\' or \'normalized\'"))
 
     if isinstance(A, dict):
         A = A["adj"]
 
-    D = np.diag(np.sum(A, axis=0))
+    # convert adjacency matrix to float
+    A = A.astype(float)
+
+    D = np.diag(np.sum(A, axis=1))
     L = D-A
 
     if version == 'rw':
@@ -73,23 +85,32 @@ def laplacian_matrix(A, version='normal'):
     return L
 
 
-def diffuse(network, ts, laplacian='normal', verbose=False):
+def diffuse(network, ts, laplacian='normal', linear_increments=False,
+            verbose=False):
     '''
     Function to simulate diffusion processes on a graph.
 
     Parameters
     ----------
+    network: (n, n) ndarray OR dict
+        Either the adjaency matrix of the the network (ndarray) or the full
+        dictionary storing a network's information (see load_data.py).
     laplacian : 'normal', 'normalized' or 'rw'
         The type of Laplacian matrix to use for the diffusion process. If 'rw'
         is choosen, the diffusion process will be relying on the random-walk
         laplacian to generate what has been refered to has the 'heat-kernel
         PageRank' of the network [A1].
+    linear_increments : boolean
+        If True, the time increments are assumed to be linear, and the
+        diffusion probabilities are computed more rapidly by making use of the
+        following equality: e^(tA)e^(sA) = e^((t+s)A).
 
     References
     ----------
     .. [A1] Chung, F. (2007). The heat kernel as the pagerank of a graph.
     Proceedings of the National Academy of Sciences, 104(50), 19735-19740.
     '''
+
     if isinstance(network, dict):
         A = network['adj']
     else:
@@ -99,11 +120,28 @@ def diffuse(network, ts, laplacian='normal', verbose=False):
     n = len(A)
     pr = np.zeros((k, n, n))
 
-    # Compute the random-walk Laplacian of graph
+    # Compute the random-walk Laplacian of the graph
     L = laplacian_matrix(A, version=laplacian)
 
-    for i in tqdm.trange(k) if verbose else range(k):
-        pr[i, :, :] = expm(-1 * ts[i] * L)
+    if linear_increments:
+        # Check if increments are linear
+        for i in range(2, len(ts)):
+            diff1 = ts[i] - ts[i-1]
+            diff2 = ts[i-1] - ts[i-2]
+            if not np.isclose(diff1, diff2):
+                raise ValueError("time increments must be linear")
+
+        delta = (ts.max() - ts.min()) / (len(ts)-1)
+        exp1A = expm(-L)
+        pr[0, :, :] = exp1A
+        expdt = expm(-delta * L)
+
+        for i in tqdm.trange(1, k) if verbose else range(1, k):
+            pr[i, :, :] = np.matmul(pr[i-1, :, :], expdt)
+
+    else:
+        for i in tqdm.trange(k) if verbose else range(k):
+            pr[i, :, :] = expm(-ts[i] * L)
 
     return pr
 
@@ -115,7 +153,7 @@ def random_walk(A, p0, n):
     Parameters
     ----------
     A : (n,n) ndarray OR dict
-        Either the adjaency matrix of the the network (ndarray) or the full
+        Either the adjaency matrix of the network (ndarray) or the full
         dictionary storing a network's information (dict).
     p0 : (n,) ndarray OR int
         The initial distribution of random walkers on the network (ndarray). If
@@ -159,9 +197,10 @@ def random_walk(A, p0, n):
     return F
 
 
-def getPageRankWeights(A, i, pr, maxIter=1000):
+def getPageRankWeights(A, i, pr, T=None, degree=None, multiscale=False,
+                       maxIter=1000):
     """
-    Function that gives you the personalized PageRank of a node in a network
+    Function that gives you the personalized PageRank of a node in a network.
 
     Parameters
     ----------
@@ -173,6 +212,14 @@ def getPageRankWeights(A, i, pr, maxIter=1000):
     pr : float
         Damping factor (One minus the probability of restart). Must be between
         0 and 1.
+    T : ndarray (n,n)
+        Transition probability matrix of the adjacency matrix. Adding this
+        matrix will speed up the process if one needs to run this function
+        thousands of time.
+    degree : ndarray (n,)
+        Vector storing the degree of the nodes in the network. Adding this
+        vector as a parameter will speed up the process if one needs to run
+        this function thousands of time.
     maxIter : int
         Maximum number of iterations to perform in case the algorithm
         does not converge (if reached, then prints a warning).
@@ -182,42 +229,51 @@ def getPageRankWeights(A, i, pr, maxIter=1000):
     F : ndarray (n,)
         The personalized PageRank vector of node i, for the selected damping
         factor
-    T : ndarray (n,)
+    M : ndarray (n,)
         The integral scores over the PageRank vector scores obtained for
         values of the damping factor. Also called Multiscale PageRank.
     it : int
         Number of iterations
     """
 
-    degree = np.sum(A, axis=1)  # out-degrees
-    n = len(A)                  # Number of nodes in the network
+    # Number of nodes in the network
+    n = len(A)
+
+    # out-degrees (or stength if weighted)
+    if degree is None:
+        degree = np.sum(A, axis=1)
+
+    # Compute the Transition matrix (transposed) of the network
+    if T is None:
+        T = A/degree[:, np.newaxis]
+        T = T.T
 
     # Check if dimension of inputs are valid
     if degree.ndim != 1 or A.ndim != 2:
         raise TypeError("Dimensions of A and degree must be 2 and 1")
 
-    # Compute the Transition matrix (transposed) of the network
-    W = A/degree[:, np.newaxis]
-    W = W.T
-
-    # Initialize parameters...
+    # Initialize parameters
     diff = 1
     it = 1
     F = np.zeros(n)  # PageRank (current)
     F[i] = 1
     Fold = F.copy()  # PageRank (old)
-    T = F.copy()     # Pagerank [multiscale]
     oneminuspr = 1-pr
+
+    # Pagerank [multiscale]
+    if multiscale:
+        M = F.copy()
 
     # Start Power Iteration...
     while diff > 1e-9:
 
         # Compute next PageRank
-        F = pr*W.dot(F)
+        F = pr*T.dot(F)
         F[i] += oneminuspr
 
         # Compute multiscale PageRank
-        T += (F-Fold)/((it+1)*(pr**it))
+        if multiscale:
+            M += (F-Fold)/((it+1)*(pr**it))
 
         it += 1
 
@@ -228,7 +284,10 @@ def getPageRankWeights(A, i, pr, maxIter=1000):
             print(i, "max iterations exceeded")
             diff = 0
 
-    return F, T, it
+    if multiscale:
+        return M, it
+    else:
+        return F, it
 
 
 def getPersoPR(A, prs, verbose=False):
@@ -252,15 +311,21 @@ def getPersoPR(A, prs, verbose=False):
     n = len(A)
     k = len(prs)
 
+    # Compute transition probability matrix
+    T = transition_matrix(A).T
+    degree = np.sum(A, axis=1)
+
     if isinstance(prs, np.ndarray):
         perso = np.zeros((k, n, n))
         for c in tqdm.trange(k) if verbose else range(k):
             for i in range(n):
-                perso[c, i, :] = getPageRankWeights(A, i, prs[c])[0]
+                perso[c, i, :], _ = getPageRankWeights(A, i, prs[c], T=T,
+                                                       degree=degree)
 
     elif prs == "multiscale":
         perso = np.zeros((n, n))
         for i in range(n):
-            _, perso[i, :], _ = getPageRankWeights(A, i, 1)
+            perso[i, :], _ = getPageRankWeights(A, i, 1, T=T, degree=degree,
+                                                multiscale=True)
 
     return perso

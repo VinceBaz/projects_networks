@@ -2,14 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import numbers
-from netneurotools.plotting import plot_fsaverage as p_fsa
+from netneurotools.plotting import plot_fsaverage
 from netneurotools.datasets import fetch_cammoun2012, fetch_schaefer2018
 from . import colors
 from mpl_toolkits.mplot3d import Axes3D  # noqa
 import warnings
 
 
-def plot_brain_surface(values, network, hemi="L", cmap="viridis", alpha=0.8,
+def plot_brain_surface(values, network, hemi=None, cmap="viridis", alpha=0.8,
                        colorbar=True, centered=False, vmin=None, vmax=None,
                        representation='surface'):
     '''
@@ -28,11 +28,14 @@ def plot_brain_surface(values, network, hemi="L", cmap="viridis", alpha=0.8,
     cortical_hemi_mask = network['hemi_mask'][network['subcortex_mask'] == 0]
     n = len(cortical_hemi_mask)
 
-    if (hemi == "L"):
+    if hemi is None:
+        hemi = network['info']['hemi']
+
+    if hemi == "L":
         scores = np.zeros((n))+np.mean(values)
         scores[cortical_hemi_mask == 1] = values
         values = scores
-    elif (hemi == "R"):
+    elif hemi == "R":
         scores = np.zeros((n))+np.mean(values)
         scores[cortical_hemi_mask == 0] = values
         values = scores
@@ -58,19 +61,19 @@ def plot_brain_surface(values, network, hemi="L", cmap="viridis", alpha=0.8,
             vmax = np.amax(values)
 
     # Plot the brain surface
-    im = p_fsa(values,
-               lhannot=lh,
-               rhannot=rh,
-               noplot=noplot,
-               order=order,
-               views=['lateral', 'm'],
-               vmin=vmin,
-               vmax=vmax,
-               colormap=cmap,
-               alpha=alpha,
-               colorbar=colorbar,
-               data_kws={'representation': representation},
-               show_toolbar=True)
+    im = plot_fsaverage(values,
+                        lhannot=lh,
+                        rhannot=rh,
+                        noplot=noplot,
+                        order=order,
+                        views=['lateral', 'm'],
+                        vmin=vmin,
+                        vmax=vmax,
+                        colormap=cmap,
+                        alpha=alpha,
+                        colorbar=colorbar,
+                        data_kws={'representation': representation},
+                        show_toolbar=True)
 
     return im
 
@@ -138,9 +141,9 @@ def plot_brain_dot(scores, coords, label=None, min_color=None,
 def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                  edge_alpha=0.25, edge_vmin=None, edge_vmax=None,
                  node_cmap="viridis", node_alpha=1, node_vmin=None,
-                 node_vmax=None, linewidth=0.25, s=100, projection=None,
-                 view="sagittal", view_edge=True, ordered_node=False,
-                 axis=False, directed=False):
+                 nodes_color='black', node_vmax=None, linewidth=0.25, s=100,
+                 projection=None, view="sagittal", view_edge=True,
+                 ordered_node=False, axis=False, directed=False, figsize=None):
     '''
     Function to draw (plot) a network of nodes and edges.
 
@@ -150,6 +153,17 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
         Dictionary storing general information about the network we wish to
         plot or an (n,n) ndarray storing the adjacency matrix of the network.
         Where 'n' is the number of nodes in the network.
+    coords : (n, 3) ndarray
+        Coordinates of the network's nodes.
+    edge_scores: (n,n) ndarray
+        ndarray storing edge scores for individual edges in the network. These
+        scores will be used to color the edges.
+    node_scores : (n,) ndarray
+        ndarray storing node scores for individual nodes in the network. These
+        scores will be used to color the nodes.
+
+    Returns
+    -------
     '''
 
     if isinstance(G, dict):
@@ -160,7 +174,10 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                        "parameter was set to 'False'. The values of the edges "
                        "may be wrong."))
 
-    fig = plt.figure(figsize=(10, 10))
+    if figsize is None:
+        figsize = (10, 10)
+
+    fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111, projection=projection)
 
     # Identify all the edges in the network
@@ -176,7 +193,7 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                                                     vmax=edge_vmax)
 
     if node_scores is None:
-        node_scores = "black"
+        node_scores = nodes_color
 
     if projection is None:
 
@@ -269,11 +286,11 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                    coords[:, 2],
                    c=node_scores,
                    cmap=node_cmap,
-                   #edgecolors='none',
+                   # edgecolors='none',
                    edgecolors='face',
                    s=s,
                    zorder=1,
-                   #depthshade=False,
+                   # depthshade=False,
                    depthshade=True,
                    vmin=node_vmin,
                    vmax=node_vmax)
