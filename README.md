@@ -5,7 +5,7 @@ This repository contains my own personal collection of measures and tools
 for my research projects.
 
 Some of these measures might someday be merged into our
-`netneurotools<https://github.com/netneurolab/netneurotools>`
+[netneurotools](https://github.com/netneurolab/netneurotools)
 repository, which I invite you to go explore for many more amazing
 tools for network neuroscience.
 
