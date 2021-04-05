@@ -35,7 +35,7 @@ def transition_matrix(A):
     if isinstance(A, dict):
         A = A["adj"]
 
-    degree = np.sum(A, axis=0)
+    degree = np.sum(A, axis=1)
     T = A/degree[:, np.newaxis]
 
     return T
