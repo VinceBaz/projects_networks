@@ -22,10 +22,11 @@ import pandas as pd
 from . import null
 
 
-def load_network(kind, parcel, data="lau", hemi="both", binary=False,
+def load_network(kind, parcel, data="lau", weights='log', hemi="both",
                  version=1, subset="all", path=None):
     '''
-    Function to load a network as well as its attributes
+    Function to load a dictionary containing information about the specified
+    brain network.
 
     Parameters
     ----------
@@ -33,6 +34,9 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
         Either 'SC' or 'FC'.
     hemi : string
         Either "both", "L" or "R".
+    weights " string
+        The weights of the edges. The options  "normal", "log" or "binary".
+        The default is "log".
     data : string
         Either "HCP" or "lau".
     parcel : string
@@ -58,28 +62,20 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     Network["info"]["parcel"] = parcel
     Network["info"]["data"] = data
     Network["info"]["hemi"] = hemi
-    Network["info"]["binary"] = binary
+    Network["info"]["weights"] = weights
     Network["info"]["version"] = version
     Network["info"]["subset"] = subset
 
     # Modify parameter names to what they are in file names
-    if version == 1:
-        version = ''
-    elif version == 2:
-        version = '_v2'
-    elif version == 3:
-        version = '_v3'
-    elif version == 4:
-        version = '_v4'
-    binary = 'b' if binary else ''
+    version = '' if version == 1 else '_v' + str(version)
     subset = '' if subset == 'all' else subset
     hemi = '' if hemi == 'both' else hemi
 
     # Store important paths for loading the relevant data
-    mainPath = path+"/brainNetworks/"+data+"/"
-    matrixPath = (mainPath +
-                  "matrices/consensus/" +
-                  subset+kind+parcel+hemi+binary+version)
+    main_path = path + "/brainNetworks/" + data + "/"
+    network_path = (main_path + "matrices/consensus/" + subset + kind +
+                    parcel + hemi + version + "/")
+    matrix_path = network_path + "/" + weights
 
     # Store general information about the network's parcellation
     parcel_info = get_general_parcellation_info(parcel)
@@ -94,24 +90,23 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
         Network['cammoun_id'] = parcel_to_n(parcel)
 
     # masks
-    masks = get_node_masks(Network, path=mainPath)
+    masks = get_node_masks(Network, path=main_path)
     Network['node_mask'] = masks[0]
     Network['hemi_mask'] = masks[1]
     Network['subcortex_mask'] = masks[2]
 
     # hemisphere
-    Network['hemi'] = get_hemi(Network, path=mainPath)
+    Network['hemi'] = get_hemi(Network, path=main_path)
 
     # coordinates
-    Network['coords'] = get_coordinates(Network, path=mainPath)
+    Network['coords'] = get_coordinates(Network, path=main_path)
 
     # Adjacency matrix
-    Network['adj'], last_modified = get_adjacency(Network, matrixPath,
+    Network['adj'], last_modified = get_adjacency(Network, matrix_path,
                                                   minimal_processing=True,
                                                   return_last_modified=True)
 
     # Test whether the network is connected. Raise a warning if not...
-    # Its bad if your network isn't connected (and you don't know).
     if not np.all(bct.reachdist(Network['adj'])[0]):
         warnings.warn(("This brain network appears to be disconnected. This "
                        "might cause problem for the computation of the other "
@@ -132,7 +127,7 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     Network["cc"] = bct.clustering_coef_wu(Network['adj'])
 
     # shortest path
-    Network['sp'] = get_shortest_path(Network, matrix_path=matrixPath,
+    Network['sp'] = get_shortest_path(Network, matrix_path=matrix_path,
                                       last_modified=last_modified)
 
     # diffusion embedding
@@ -153,26 +148,8 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     Network["mfpt"] = bct.mean_first_passage_time(Network['adj'])
 
     # betweenness centrality
-    #
-    # Loaded from saved file...
-    # IF file not found OR Adjacency was modified after creation,
-    # then recompute measure
-    path = matrixPath+"/bc.npy"
-    if not os.path.exists(path):
-
-        print("betweenness centrality not found")
-        print("computing betweenness centrality...")
-        Network["bc"] = bct.betweenness_wei(Network["inv_adj"])
-        np.save(matrixPath+"/bc.npy", Network["bc"])
-
-    elif os.path.getmtime(path) < last_modified:
-        print("new adjacency matrix was found")
-        print("recomputing betweeness centrality...")
-        Network["bc"] = bct.betweenness_wei(Network["inv_adj"])
-        np.save(matrixPath+"/bc.npy", Network["bc"])
-
-    else:
-        Network["bc"] = np.load(path)
+    Network['bc'] = get_betweenness(Network, matrix_path=matrix_path,
+                                    last_modified=last_modified)
 
     # routing efficiency
     Network["r_eff"] = efficiency(Network)
@@ -187,7 +164,7 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     Network['clo'] = 1/np.mean(Network['sp'], axis=0)
 
     # communities + participation coefficient
-    path = matrixPath+"/communities/"
+    path = matrix_path + "/communities/"
     if os.path.exists(path):
         files = []
         for i in os.listdir(path):
@@ -203,13 +180,14 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
                 ppc = bct.participation_coef(Network['adj'], Network["ci"][i])
                 Network["ppc"].append(ppc)
 
+    # Edge lengths
     if (data == "HCP") and (kind == "SC"):
-        path = mainPath+"matrices/"+subset+kind+parcel+hemi+"_lengths.npy"
+        path = main_path+"matrices/"+subset+kind+parcel+hemi+"_lengths.npy"
         if os.path.exists(path):
             Network["lengths"] = np.load(path)
 
     # streamline connection lengths
-    path = matrixPath+"/len.npy"
+    path = network_path + "/len.npy"
     if os.path.exists(path):
         Network['len'] = np.load(path)
 
@@ -225,9 +203,9 @@ def load_network(kind, parcel, data="lau", hemi="both", binary=False,
     else:
         fname_l = "scale" + Network['cammoun_id'] + "_lh_dist.csv"
         fname_r = "scale" + Network['cammoun_id'] + "_rh_dist.csv"
-    Network['geo_dist_L'] = pd.read_csv(mainPath+"/geodesic/medial/" + fname_l,
+    Network['geo_dist_L'] = pd.read_csv(main_path+"/geodesic/medial/" + fname_l,
                                         header=None).values
-    Network['geo_dist_R'] = pd.read_csv(mainPath+"/geodesic/medial/" + fname_r,
+    Network['geo_dist_R'] = pd.read_csv(main_path+"/geodesic/medial/" + fname_r,
                                         header=None).values
 
     return Network
@@ -373,7 +351,7 @@ def parcel_to_n(parcel):
 def get_adjacency(Network, matrix_path, minimal_processing=True,
                   return_last_modified=True):
 
-    path = matrix_path + ".npy"
+    path = matrix_path + "/adj.npy"
 
     # Load adjacency matrix
     A = np.load(path)
@@ -584,6 +562,45 @@ def get_shortest_path(Network, matrix_path=None, last_modified=0):
         sp, _ = bct.distance_wei(Network['inv_adj'])
 
     return sp
+
+
+def get_betweenness(Network, matrix_path, last_modified=0):
+    '''
+    Function to get the betweenness centrality of of a network's nodes. If a
+    matrix_path is given, this function will try to load the centrality scores
+    using this matrix path. If these scores have been generated before the
+    adjacency matrix itself has been generated, then the scores will be
+    recomputed.
+    '''
+
+    if matrix_path is not None:
+
+        path = matrix_path + "/bc.npy"
+
+        if not os.path.exists(path):
+
+            print("betweenness centrality not found")
+            print("computing betweenness centrality...")
+
+            bc = bct.betweenness_wei(Network["inv_adj"])
+            np.save(path, bc)
+
+        elif os.path.getmtime(path) < last_modified:
+
+            print("new adjacency matrix was found")
+            print("computing betweenness centrality...")
+
+            bc = bct.betweenness_wei(Network["inv_adj"])
+            np.save(path, bc)
+
+        else:
+
+            bc = np.load(path)
+
+    else:
+        bc = bct.betweenness_wei(Network["inv_adj"])
+
+    return bc
 
 
 def get_streamline_length(Network, path='../data'):

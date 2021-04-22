@@ -61,9 +61,9 @@ def mask(network, other_networks=None, with_diag=False, type="all"):
     return mask
 
 
-def scale(values, vmin, vmax):
+def scale(values, vmin, vmax, axis=None):
 
-    s = (values - values.min()) / (values.max() - values.min())
+    s = (values - values.min(axis=axis)) / (values.max(axis=axis) - values.min(axis=axis))
     s = s * (vmax - vmin)
     s = s + vmin
 
