@@ -311,6 +311,42 @@ def weighted_assort(A, M, N=None):
     return ga
 
 
+def non_square_assort(A, M, N):
+    '''
+    Function to compute the weighted Pearson correlation between the attributes
+    of the nodes connected by edges in a network that is non-square. For
+    example, this function works for networks generated from tract-tracing
+    experiments. This function also works for binary networks.
+    '''
+
+    n_i, n_j = A.shape
+
+    # Normalize the adjacency matrix to make weights sum to 1
+    A_norm = A / np.sum(A, axis=None)
+
+    # Compute the (weighted) mean and standard deviation of our attributes
+    k_i_norm = np.sum(A_norm, axis=1)
+    M_mean = np.sum(k_i_norm * M)
+    M_sd = np.sqrt(np.sum(k_i_norm * ((M-M_mean)**2)))
+
+    # Compute the zscores of our attributes for each edge "endpoints"
+    zM = (M - M_mean) / M_sd
+    zj = np.repeat(zM[:, np.newaxis], n_j, axis=1)
+
+    # Do the same thing for our second attribute (if we have a second one)
+    k_j_norm = np.sum(A_norm, axis=0)
+    N_mean = np.sum(k_j_norm * N)
+    N_sd = np.sqrt(np.sum(k_j_norm * ((N-N_mean)**2)))
+
+    zN = (N - N_mean) / N_sd
+    zi = np.repeat(zN[np.newaxis, :], n_i, axis=0)
+
+    # Compute the weighted assortativity as a sum of zscores
+    ga = (A_norm * zi * zj).sum()
+
+    return ga
+
+
 def thorndike_correct(A, M, assortT, m, x_stds):
     x_mean = (1/(2*m)) * (np.sum(np.sum(A, axis=0)*M))
     x_std = np.sqrt((1/(2*m)) * np.sum(np.sum(A, axis=0) * ((M - x_mean)**2)))

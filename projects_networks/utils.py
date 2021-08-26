@@ -6,6 +6,7 @@ Last updated on : 2020/05/23
 """
 
 import numpy as np
+import pickle
 
 
 def mask(network, other_networks=None, with_diag=False, type="all"):
@@ -132,3 +133,17 @@ def get_p_value(perm, emp):
 
     k = len(perm)
     return len(np.where(abs(perm-np.mean(perm)) > abs(emp-np.mean(perm)))[0])/k
+
+
+def load_pickle(path):
+
+    with open(path, 'rb') as handle:
+        data = pickle.load(handle)
+
+    return data
+
+
+def save_pickle(data, path):
+
+    with open(path, 'wb') as handle:
+        pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)

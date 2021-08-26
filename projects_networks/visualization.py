@@ -78,72 +78,13 @@ def plot_brain_surface(values, network, hemi=None, cmap="viridis", alpha=0.8,
     return im
 
 
-def plot_brain_dot(scores, coords, label=None, min_color=None,
-                   max_color=None, colormap="viridis", colorbar=True, size=500,
-                   show=True, dpi=100, norm=None):
-    '''
-    Function to plot data on the brain, where each brain region corresponds
-    to a point in a 3-dimensional eucledian space
-    '''
-    if min_color is None:
-        min_color = np.amin(scores)
-    if max_color is None:
-        max_color = np.amax(scores)
-
-    fig = plt.figure(figsize=(35, 10), dpi=dpi)
-
-    orienX = [0, 0, 90]
-    orienY = [270, 180, 180]
-    ax = [None, None, None]
-    mapp = [None, None, None]
-
-    for k in range(3):
-
-        ax[k] = fig.add_subplot(1, 3, k+1, projection='3d')
-        ax[k].grid(True)
-        ax[k].axis('off')
-
-        mapp[k] = ax[k].scatter(xs=coords[:, 0],
-                                ys=coords[:, 1],
-                                zs=coords[:, 2],
-                                c=scores,
-                                vmin=min_color,
-                                vmax=max_color,
-                                s=size,
-                                cmap=colormap,
-                                edgecolors=None,
-                                rasterized=True,
-                                norm=norm)
-
-        ax[k].view_init(orienX[k], orienY[k])
-        ax[k].set(xlim=0.6 * np.array(ax[k].get_xlim()),
-                  ylim=0.6 * np.array(ax[k].get_ylim()),
-                  zlim=0.6 * np.array(ax[k].get_zlim()))
-
-    plt.subplots_adjust(wspace=0, left=0, right=1, bottom=0.1, hspace=0)
-
-    if colorbar is True:
-
-        cbar_ax = fig.add_axes([0.3, 0, 0.4, 0.10])
-        cbar = fig.colorbar(mapp[0],
-                            cax=cbar_ax,
-                            orientation='horizontal',
-                            pad=0.05)
-
-        if label is not None:
-            cbar.set_label(label, size=20)
-            cbar.ax.tick_params(labelsize=20)
-
-    if show is False:
-        plt.close()
-
-
 def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                  edge_alpha=0.25, edge_vmin=None, edge_vmax=None,
                  node_cmap="viridis", node_alpha=1, node_vmin=None,
                  nodes_color='black', node_vmax=None, linewidth=0.25, s=100,
                  projection=None, view="sagittal", view_edge=True,
-                 ordered_node=False, axis=False, directed=False, figsize=None):
+                 ordered_node=False, axis=False, directed=False, figsize=None,
+                 node_order=None):
     '''
     Function to draw (plot) a network of nodes and edges.
 
@@ -229,7 +170,7 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                              zorder=0)
 
         # plot the nodes
-        if ordered_node is False:
+        if not ordered_node:
             ax.scatter(coords[:, 0],
                        coords[:, 1],
                        c=node_scores,
@@ -237,12 +178,15 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                        vmin=node_vmin,
                        vmax=node_vmax,
                        clip_on=False,
-                       # alpha=node_alpha,
+                       alpha=node_alpha,
                        s=s,
                        zorder=1)
 
         else:
-            order = np.argsort(node_scores)
+            if node_order is None:
+                order = np.argsort(node_scores)
+            else:
+                order = node_order
 
             # Order the colors and the sizes so that they match the scores
             if isinstance(s, numbers.Number):
@@ -263,7 +207,7 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                        cmap=node_cmap,
                        vmin=node_vmin,
                        vmax=node_vmax,
-                       # alpha=node_alpha,
+                       alpha=node_alpha,
                        s=ordered_s,
                        zorder=1)
         ax.set_aspect('equal')
@@ -301,6 +245,7 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
                         [coords[edge_i, 1], coords[edge_j, 1]],
                         [coords[edge_i, 2], coords[edge_j, 2]],
                         c=c,
+                        alpha=edge_alpha,
                         linewidth=linewidth,
                         zorder=0)
 

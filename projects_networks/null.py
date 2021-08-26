@@ -5,7 +5,7 @@ from netneurotools.freesurfer import find_parcel_centroids
 from netneurotools.stats import gen_spinsamples
 
 
-def assort_preserv_swap(A, M, g, epsilon=0.0001):
+def assort_preserv_swap(A, M, g, epsilon=0.0001, und=True):
     '''
     Function to generate surrogate networks with preserved global assortativity
     and degree.
@@ -21,6 +21,8 @@ def assort_preserv_swap(A, M, g, epsilon=0.0001):
     epsilon : float
         Error term when calculating the difference between the empirical
         and the permuted assortativity.
+    und: Boolean
+        Specifies whether the network is undirected (True) or directed (False).
     '''
 
     # Gather information about the network
@@ -65,14 +67,20 @@ def assort_preserv_swap(A, M, g, epsilon=0.0001):
             # swap edges
             w1 = A[e1[0], e1[1]]
             w2 = A[e2[0], e2[1]]
-            A[e1[0], e1[1]] = 0
-            A[e1[1], e1[0]] = 0
-            A[e2[0], e2[1]] = 0
-            A[e2[1], e2[0]] = 0
-            A[e1[0], e2[1]] = w1
-            A[e2[1], e1[0]] = w1
-            A[e2[0], e1[1]] = w2
-            A[e1[1], e2[0]] = w2
+            if und:
+                A[e1[0], e1[1]] = 0
+                A[e1[1], e1[0]] = 0
+                A[e2[0], e2[1]] = 0
+                A[e2[1], e2[0]] = 0
+                A[e1[0], e2[1]] = w1
+                A[e2[1], e1[0]] = w1
+                A[e2[0], e1[1]] = w2
+                A[e1[1], e2[0]] = w2
+            else:
+                A[e1[0], e1[1]] = 0
+                A[e2[0], e2[1]] = 0
+                A[e1[0], e2[1]] = w1
+                A[e2[0], e1[1]] = w2
 
             # Compute updated assortativity
             k_norm = np.sum(A, axis=0)
@@ -93,24 +101,34 @@ def assort_preserv_swap(A, M, g, epsilon=0.0001):
                 diff = diffNew
 
                 # Update edge information
-                edges[rand1] = [e1[0], e2[1]]
-                edges[rand2] = [e2[0], e1[1]]
+                if und:
+                    edges[rand1] = [e1[0], e2[1]]
+                    edges[rand2] = [e2[0], e1[1]]
 
-                edges.remove([e1[1], e1[0]])
-                edges.remove([e2[1], e2[0]])
-                edges.append([e2[1], e1[0]])
-                edges.append([e1[1], e2[0]])
+                    edges.remove([e1[1], e1[0]])
+                    edges.remove([e2[1], e2[0]])
+                    edges.append([e2[1], e1[0]])
+                    edges.append([e1[1], e2[0]])
+                else:
+                    edges[rand1] = [e1[0], e2[1]]
+                    edges[rand2] = [e2[0], e1[1]]
 
             # Else, swap back
             else:
-                A[e1[0], e1[1]] = w1
-                A[e1[1], e1[0]] = w1
-                A[e2[0], e2[1]] = w2
-                A[e2[1], e2[0]] = w2
-                A[e1[0], e2[1]] = 0
-                A[e2[1], e1[0]] = 0
-                A[e2[0], e1[1]] = 0
-                A[e1[1], e2[0]] = 0
+                if und:
+                    A[e1[0], e1[1]] = w1
+                    A[e1[1], e1[0]] = w1
+                    A[e2[0], e2[1]] = w2
+                    A[e2[1], e2[0]] = w2
+                    A[e1[0], e2[1]] = 0
+                    A[e2[1], e1[0]] = 0
+                    A[e2[0], e1[1]] = 0
+                    A[e1[1], e2[0]] = 0
+                else:
+                    A[e1[0], e1[1]] = w1
+                    A[e2[0], e2[1]] = w2
+                    A[e1[0], e2[1]] = 0
+                    A[e2[0], e1[1]] = 0
 
     # Unnormalize the weights
     A = A * sum_weights
@@ -118,15 +136,22 @@ def assort_preserv_swap(A, M, g, epsilon=0.0001):
     return A, it
 
 
-def generate_spins(parcel, lhannot, rhannot, order, info_path, hemi='',
-                   k=10000):
+def generate_spins(parcel, info_path, hemi='', k=10000):
     '''
     Function to generate spun permutation of a parcellation's parcels.
     '''
 
+    # Load information about the parcellation
+    parcel_info = load_data.get_general_parcellation_info(parcel)
+    order = parcel_info[0]
+    noplot = parcel_info[1]
+    lhannot = parcel_info[2]
+    rhannot = parcel_info[3]
+
     # Generate the spins
     coords, hemi_centroids = find_parcel_centroids(lhannot=lhannot,
-                                                   rhannot=rhannot)
+                                                   rhannot=rhannot,
+                                                   drop=noplot)
     spins_LR = gen_spinsamples(coords, hemi_centroids, n_rotate=k)
 
     # Get some info about hemispheres and subcortex

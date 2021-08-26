@@ -166,7 +166,7 @@ def random_walk(A, p0, n):
     if isinstance(A, dict):
         A = A["adj"]
 
-    n = len(A)
+    n_nodes = len(A)
 
     # Get Markov matrix of the network (transposed, in this case)
     W = transition_matrix(A).T
@@ -175,22 +175,16 @@ def random_walk(A, p0, n):
     if isinstance(p0, np.ndarray):
         F = p0
     else:
-        F = np.zeros(n)
+        F = np.zeros(n_nodes)
         F[p0] = 1
 
     # Initialize other parameters...
-    diff = 1
     it = 1
     Fold = F.copy()
 
     # Start Power Iteration...
     while it < n:
         F = W.dot(F)
-        diff = np.sum((F-Fold)**2)
-        if diff < 1e-9:
-            print("stationary distribution reached (", it, ")")
-            diff = 0
-            return F
         Fold = F.copy()
         it += 1
 

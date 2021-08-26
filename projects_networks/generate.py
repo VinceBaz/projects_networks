@@ -2,6 +2,8 @@
 """
 Created on Tue Dec 29 13:58:26 2020
 
+This file contains function to generate different types of network.
+
 @author: Vincent Bazinet
 """
 
@@ -13,9 +15,11 @@ from scipy.spatial.distance import cdist
 from . import load_data as ld
 from mapalign.embed import compute_diffusion_map
 from netneurotools.metrics import communicability_wei
+import warnings
 
 
-def generate_network(network_type, lattice_kws=None, ER_kws=None, ignore=None):
+def generate_network(network_type, lattice_kws=None, ER_kws=None,
+                     custom_kws=None, ignore=None):
     '''
     Function to generate networks.
 
@@ -29,7 +33,7 @@ def generate_network(network_type, lattice_kws=None, ER_kws=None, ignore=None):
             'binary_ER'
             'assortative_toy'
             'dissassortative_toy'
-
+            'custom'
     ignore : List
         List of dictionary entries that are to be ignored when loading
         the results. Available options are: 'sp' (shortest path).
@@ -85,6 +89,14 @@ def generate_network(network_type, lattice_kws=None, ER_kws=None, ignore=None):
         Network['adj'] = generate_assortative_toy()
     if network_type == 'disassortative_toy':
         Network['adj'] = generate_disassortative_toy()
+    if network_type == 'custom':
+        Network['adj'] = custom_kws['adj']
+
+    # Test whether the network is connected. Raise a warning if not...
+    if not np.all(bct.reachdist(Network['adj'])[0]):
+        warnings.warn(("This brain network appears to be disconnected. This "
+                       "might cause problem for the computation of the other "
+                       "measures"))
 
     # Part 2: Topological measures
     Network['str'] = Network['adj'].sum(axis=0)
@@ -102,7 +114,8 @@ def generate_network(network_type, lattice_kws=None, ER_kws=None, ignore=None):
     Network['PCs'] = ld.getPCs(Network['adj'])[0]
     de = compute_diffusion_map(Network['adj'],
                                n_components=10,
-                               return_result=True)
+                               return_result=True,
+                               skip_checks=True)
     Network["de"] = de[0]
     Network['de_extra'] = de[1]
     Network['fa'] = _forceAtlasEmbedding(Network, verbose=False)
@@ -220,7 +233,8 @@ def generate_disassortative_toy():
     return adjacency
 
 
-def _forceAtlasEmbedding(Network, verbose=True, dissuade_hubs=True):
+def _forceAtlasEmbedding(Network, verbose=True, dissuade_hubs=True,
+                         scalingRatio=2.0):
 
     adj = Network["adj"]
 
@@ -238,7 +252,7 @@ def _forceAtlasEmbedding(Network, verbose=True, dissuade_hubs=True):
                         multiThreaded=False,  # NOT IMPLEMENTED
 
                         # Tuning
-                        scalingRatio=2.0,
+                        scalingRatio=scalingRatio,
                         strongGravityMode=False,
                         gravity=1.0,
 
