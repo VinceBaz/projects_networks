@@ -34,7 +34,11 @@ def mask(network, other_networks=None, with_diag=False, type="all"):
 
     '''
 
-    A = network["adj"]
+    if isinstance(network, dict):
+        A = network["adj"]
+    else:
+        A = network
+
     n = len(A)
     mask = np.zeros((n, n), dtype="bool")
     mask[:] = True
@@ -133,6 +137,11 @@ def get_p_value(perm, emp):
 
     k = len(perm)
     return len(np.where(abs(perm-np.mean(perm)) > abs(emp-np.mean(perm)))[0])/k
+
+
+def standardize_scores(perm, emp, axis=None):
+
+    return (emp - perm.mean(axis=axis)) / perm.std(axis=axis)
 
 
 def load_pickle(path):
