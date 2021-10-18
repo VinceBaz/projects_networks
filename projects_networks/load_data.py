@@ -84,6 +84,7 @@ def load_network(kind, parcel, data="lau", weights='log', hemi="both",
     Network['lhannot'] = parcel_info[2]
     Network['rhannot'] = parcel_info[3]
     Network['atlas'] = parcel_info[4]
+    Network['parcellation_name'] = parcel_info[5]
 
     # Load the cammoun_id of the parcellation, if Cammoun (i.e. 033, 060, etc.)
     if parcel[0] != 's':
@@ -193,7 +194,7 @@ def load_network(kind, parcel, data="lau", weights='log', hemi="both",
 
     # ROI names
     if parcel[0] != "s":
-        Network['ROInames'] = get_ROInames(Network)
+        Network['ROInames'] = get_ROI_names(Network)
 
     # geodesic distances between nodes
     if parcel[0] == "s":
@@ -395,11 +396,18 @@ def get_coordinates(Network, path='../data/brainNetworks/lau'):
 
 def get_general_parcellation_info(parcel):
     '''
-    Function to get general information about the parcellation.
+    Function to get some general information about the parcellation.
+
+    Parameters
+    ----------
+    parcel: string
+        Short name for the specific parcellation. For instance: "68", "114",
+        "s400", etc.
     '''
 
     home = os.path.expanduser("~")
 
+    # Get the general information, for the Schaefer parcellations
     if parcel[0] == "s":
         n = parcel[1:]
         order = "LR"
@@ -423,7 +431,9 @@ def get_general_parcellation_info(parcel):
                  'MNI152/'
                  'Schaefer2018_' + n + 'Parcels_7Networks_order_'
                  'FSLMNI152_1mm.nii.gz')
+        name = 'schaefer'
 
+    # Get the general information for the Cammoun parcellations
     else:
         n = parcel_to_n(parcel)
         order = "RL"
@@ -444,8 +454,9 @@ def get_general_parcellation_info(parcel):
                  'MNI152NLin2009aSym/'
                  'atl-Cammoun2012_space-MNI152NLin2009aSym_res-' +
                  n + '_deterministic.nii.gz')
+        name = 'cammoun'
 
-    return order, noplot, lhannot, rhannot, atlas
+    return order, noplot, lhannot, rhannot, atlas, name
 
 
 def get_node_masks(N, path="../data/brainNetworks/lau"):
@@ -674,7 +685,7 @@ def efficiency_diffusion(Network):
     return efficiency_global
 
 
-def get_ROInames(Network, path=None):
+def get_ROI_names(Network, path=None):
     '''
     Function to get a list of names of individual ROI regions in the given
     parcellation.
