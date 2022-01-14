@@ -459,58 +459,69 @@ def get_general_parcellation_info(parcel):
     return order, noplot, lhannot, rhannot, atlas, name
 
 
-def get_node_masks(N, path="../data/brainNetworks/lau"):
+def get_node_masks(N, N_hemi=None, N_data=None,
+                   N_parcel=None, path="../data/brainNetworks/lau"):
     '''
     Function to get a mask of the nodes of this particular network (1), given
     the original parcellation (0).
+
+    Parameters
+    ----------
+    N : dict
+        Dictionary storing relevant information about the network of interest.
+
+
     '''
 
     # Load info about the network
-    network_hemi = N['info']['hemi']
-    network_data = N['info']['data']
-    network_parcel = N['info']['parcel']
+    if N_hemi is None:
+        N_hemi = N['info']['hemi']
+    if N_data is None:
+        N_data = N['info']['data']
+    if N_parcel is None:
+        N_parcel = N['info']['parcel']
 
     # Load general info about hemispheres and subcortex
     info_path = path + "/matrices/general_info"
-    hemi_mask = _load_hemi_info(network_parcel, info_path)
-    subcortex_nodes = _load_subcortex_info(network_parcel, info_path)
+    hemi_mask = _load_hemi_info(N_parcel, info_path)
+    subcortex_nodes = _load_subcortex_info(N_parcel, info_path)
 
     # Initialize node mask
-    n = len(hemi_mask)
-    node_mask = np.zeros((n), dtype=bool)
+    n_nodes = len(hemi_mask)
+    node_mask = np.zeros((n_nodes), dtype=bool)
 
     # Get subcortex mask
-    subcortex_mask = np.zeros((n), dtype=bool)
+    subcortex_mask = np.zeros((n_nodes), dtype=bool)
     subcortex_mask[subcortex_nodes] = True
 
     # Figure out whether this parcellation contains the subcortex
     subcortex = False
-    if network_data == 'lau':
-        if N["info"]["parcel"] in ['83', '129', '234', '463', '1015']:
+    if N_data == 'lau':
+        if N_parcel in ['83', '129', '234', '463', '1015']:
             subcortex = True
 
     # Get a list of indices of the nodes in the network
     if not subcortex:
 
-        if network_hemi == 'L':
+        if N_hemi == 'L':
             nodes = np.where((hemi_mask == 1) & (subcortex_mask == 0))[0]
 
-        elif network_hemi == 'R':
+        elif N_hemi == 'R':
             nodes = np.where((hemi_mask == 0) & (subcortex_mask == 0))[0]
 
-        elif network_hemi == 'both':
+        elif N_hemi == 'both':
             nodes = np.where((subcortex_mask == 0))[0]
 
     elif subcortex:
 
-        if network_hemi == 'L':
+        if N_hemi == 'L':
             nodes = np.where(hemi_mask == 1)[0]
 
-        elif network_hemi == 'R':
+        elif N_hemi == 'R':
             nodes = np.where(hemi_mask == 0)[0]
 
-        elif network_hemi == 'both':
-            nodes = np.ones((n), dtype=bool)
+        elif N_hemi == 'both':
+            nodes = np.ones((n_nodes), dtype=bool)
 
     node_mask[nodes] = True
 
@@ -720,8 +731,8 @@ def getPCAgene(genes, scaled=True, return_scores=False):
 
     Parameters
     -----------
-    INPUTS:
-        genes -> gene expression data, [ndarray; shape:(n_nodes, n_genes)]
+    genes: (n_nodes, n_genes) ndarray
+        Gene expression data
 
     Returns
     -------

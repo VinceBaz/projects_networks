@@ -102,6 +102,9 @@ def plot_network(G, coords, edge_scores, node_scores, edge_cmap="Greys",
     node_scores : (n,) ndarray
         ndarray storing node scores for individual nodes in the network. These
         scores will be used to color the nodes.
+    node_vmin, node_vmax: float, default: None
+        Minimal and maximal values of the nodes colors. If None, the min and
+        max of the node_scores array will be used.
 
     Returns
     -------
