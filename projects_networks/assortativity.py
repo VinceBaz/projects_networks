@@ -258,7 +258,7 @@ def global_assort(A, M, method="pearson", debugInfo=False):
         return rglobal, mean, norms, denominator
 
 
-def weighted_assort(A, M, N=None):
+def weighted_assort(A, M, N=None, directed=False, normalize=True):
     '''
     Function to compute the weighted Pearson correlation between the attributes
     of the nodes connected by edges in a network (i.e. weighted assortativity).
@@ -280,33 +280,96 @@ def weighted_assort(A, M, N=None):
         of attributes
     '''
 
-    N_nodes = len(A)
+    if (directed) and (N is None):
+        N = M
 
     # Normalize the adjacency matrix to make weights sum to 1
-    A_norm = A / np.sum(A, axis=None)
-    k_norm = np.sum(A_norm, axis=0)
+    if normalize:
+        A = A / A.sum(axis=None)
 
-    # Compute the (weighted) mean and standard deviation of our attributes
-    M_mean = np.sum(k_norm * M)
-    M_sd = np.sqrt(np.sum(k_norm * ((M-M_mean)**2)))
+    # zscores of in-annotations
+    k_in = A.sum(axis=0)
+    mean_in = np.sum(k_in * M)
+    sd_in = np.sqrt(np.sum(k_in * ((M-mean_in)**2)))
+    z_in = (M - mean_in) / sd_in
 
-    # Compute the zscores of our attributes for each edge "endpoints"
-    zM = (M - M_mean) / M_sd
-    zj = np.repeat(zM[np.newaxis, :], N_nodes, axis=0)
-
+    # zscores of out-annotations (if directed or M is not None)
     if N is not None:
-        # Do the same thing for our second attribute (if we have a second one)
-        N_mean = np.sum(k_norm * N)
-        N_sd = np.sqrt(np.sum(k_norm * ((N-N_mean)**2)))
-
-        zN = (N - N_mean) / N_sd
-        zi = np.repeat(zN[:, np.newaxis], N_nodes, axis=1)
+        k_out = A.sum(axis=1)
+        mean_out = np.sum(k_out * N)
+        sd_out = np.sqrt(np.sum(k_out * ((N-mean_out)**2)))
+        z_out = (N - mean_out) / sd_out
     else:
-        # Otherwise, take the transform of the zj matrix
-        zi = zj.T
+        z_out = z_in
 
-    # Compute the weighted assortativity as a sum of zscores
-    ga = (A_norm * zi * zj).sum()
+    # Compute the weighted assortativity as a sum of z-scores
+    ga = (z_in[np.newaxis, :] * z_out[:, np.newaxis] * A).sum()
+
+    return ga
+
+
+def wei_assort_batch(A, M_all, N_all=None, n_batch=100, directed=False):
+    '''
+    Function to compute the weighted assortativity of a "batch" of attributes
+    on a single network.
+
+    Parameters
+    ----------
+    A : (n, n) ndarray
+        Adjacency matrix
+    M_all : (m, n) ndarray
+        Attributes
+    n_batch: int
+
+    Returns
+    -------
+    '''
+    n_attributes, n_nodes = M_all.shape
+    ga = np.array([])
+
+    # Create batches of annotations
+    if N_all is None:
+        if not directed:
+            M_batches = np.array_split(M_all, n_batch)
+        else:
+            N_all = True
+            M_batches = zip(np.array_split(M_all, n_batch),
+                            np.array_split(M_all, n_batch))
+    else:
+        M_batches = zip(np.array_split(M_all, n_batch),
+                        np.array_split(N_all, n_batch))
+
+    # Normalize the adjacency matrix to make weights sum to 1
+    A = A / A.sum(axis=None)
+
+    # Compute in- and out- degree (if directed)
+    k_in = A.sum(axis=0)
+    if (directed) or (N_all is not None):
+        k_out = A.sum(axis=1)
+
+    for M in M_batches:
+        if N_all is not None:
+            M, N = M
+        # Z-score of in-annotations
+        n_att, _ = M.shape
+        mean_in = (k_in[np.newaxis, :] * M).sum(axis=1)
+        var_in = (k_in[np.newaxis, :] * ((M - mean_in[:, np.newaxis])**2)).sum(axis=1)  # noqa
+        sd_in = np.sqrt(var_in)
+        z_in = (M - mean_in[:, np.newaxis]) / sd_in[:, np.newaxis]
+        # Z-score of out-annotations
+        if N_all is not None:
+            n_att, _ = N.shape
+            mean_out = (k_out[np.newaxis, :] * N).sum(axis=1)
+            var_out = (k_out[np.newaxis, :] * ((N - mean_out[:, np.newaxis])**2)).sum(axis=1)  # noqa
+            sd_out = np.sqrt(var_out)
+            z_out = (N - mean_out[:, np.newaxis]) / sd_out[:, np.newaxis]
+        else:
+            z_out = z_in
+        # Compute assortativity
+        ga_batch = A[np.newaxis, :, :] * z_out[:, :, np.newaxis] * z_in[:, np.newaxis, :]  # noqa
+        ga_batch = ga_batch.sum(axis=(1, 2))
+        # Add assortativity results to ga
+        ga = np.concatenate((ga, ga_batch), axis=0)
 
     return ga
 
@@ -345,6 +408,32 @@ def non_square_assort(A, M, N):
     ga = (A_norm * zi * zj).sum()
 
     return ga
+
+
+def discrete_assort(A, M):
+    '''
+    Function to compute the assortativity of discrete attributes.
+    '''
+
+    n_nodes = len(A)
+    categs = np.unique(M)
+    n_categs = len(categs)
+
+    M_i = np.repeat(M[:, np.newaxis], n_nodes, axis=1)
+    M_j = M_i.T
+
+    # Compute the mixing matrix
+    e = np.zeros((n_categs, n_categs))
+    for i, cat_i in enumerate(categs):
+        for j, cat_j in enumerate(categs):
+            e[i, j] = A[(A > 0) & (M_i == cat_i) & (M_j == cat_j)].sum()
+    e = e / A.sum(axis=None)
+
+    # Compute the assortativity
+    e2_sum = np.matmul(e, e).sum(axis=None)
+    r = (np.trace(e) - e2_sum) / (1 - e2_sum)
+
+    return r
 
 
 def thorndike_correct(A, M, assortT, m, x_stds):

@@ -1,8 +1,8 @@
 import random
 import numpy as np
 from . import load_data
-from netneurotools.freesurfer import find_parcel_centroids
-from netneurotools.stats import gen_spinsamples
+from neuromaps.nulls import alexander_bloch
+from neuromaps.images import annot_to_gifti
 
 
 def assort_preserv_swap(A, M, g, epsilon=0.0001, und=True):
@@ -144,15 +144,16 @@ def generate_spins(parcel, info_path, hemi='', k=10000):
     # Load information about the parcellation
     parcel_info = load_data.get_general_parcellation_info(parcel)
     order = parcel_info[0]
-    noplot = parcel_info[1]
     lhannot = parcel_info[2]
     rhannot = parcel_info[3]
 
-    # Generate the spins
-    coords, hemi_centroids = find_parcel_centroids(lhannot=lhannot,
-                                                   rhannot=rhannot,
-                                                   drop=noplot)
-    spins_LR = gen_spinsamples(coords, hemi_centroids, n_rotate=k)
+    # Generate the nulls
+    spins_LR = alexander_bloch(None,
+                               'fsaverage',
+                               density='164k',
+                               n_perm=10000,
+                               parcellation=annot_to_gifti((lhannot, rhannot)),
+                               seed=1234)
 
     # Get some info about hemispheres and subcortex
     hemi_info = load_data._load_hemi_info(parcel, info_path)
@@ -161,31 +162,26 @@ def generate_spins(parcel, info_path, hemi='', k=10000):
     # Remove subcortex info from hemi_info (spins are only on the surface)
     hemi_info = np.delete(hemi_info, sub_info)
 
-    R_id = np.where(hemi_info == 0)[0]
-    L_id = np.where(hemi_info == 1)[0]
-    n_R = len(R_id)
-    n_L = len(L_id)
+    _, (n_R, n_L) = np.unique(hemi_info, return_counts=True)
 
     # If order is RL, we must invert the order of the spun annotations
     if order == 'RL':
         spins = np.zeros((spins_LR.shape))
-        spins[R_id, :] = (spins_LR[np.where(hemi_centroids == 1)[0], :] - n_L)
-        spins[L_id, :] = (spins_LR[np.where(hemi_centroids == 0)[0], :] + n_R)
+        spins[:n_R, :] = spins_LR[n_L:, :] - n_L
+        spins[n_R:, :] = spins_LR[:n_L, :] + n_R
     elif order == 'LR':
         spins = spins_LR
 
     # Only keep the information about the hemisphere we want
     if hemi == "L":
         if order == 'RL':
-            spins = spins[np.where(hemi_info == 1)[0], :] - n_R
+            spins = spins[n_R:, :] - n_R
         elif order == 'LR':
-            spins = spins[np.where(hemi_info == 1)[0], :]
+            spins = spins[:n_L, :]
     elif hemi == 'R':
         if order == 'RL':
-            spins = spins[np.where(hemi_info == 0)[0], :]
+            spins = spins[:n_R, :]
         elif order == 'LR':
-            spins = spins[np.where(hemi_info == 1)[0], :] - n_L
+            spins = spins[n_L:, :] - n_L
 
-    spins = spins.astype(int)
-
-    return spins
+    return spins.astype(int)

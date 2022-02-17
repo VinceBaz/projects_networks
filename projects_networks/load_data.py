@@ -22,8 +22,8 @@ import pandas as pd
 from . import null
 
 
-def load_network(kind, parcel, data="lau", weights='log', hemi="both",
-                 version=1, subset="all", path=None):
+def load_network(kind, parcel, data="lau", weights='log', subset="all",
+                 version=1, hemi="both", path=None):
     '''
     Function to load a dictionary containing information about the specified
     brain network.
@@ -320,6 +320,21 @@ def load_annotations(parcel, data="lau", hemi="both",
     path = mainPath+"annotations/thi/"+subset+"_"+parcel+hemi+".npy"
     if os.path.exists(path):
         ANN["thi"] = np.mean(np.load(path), axis=0)
+
+    # Receptor Excitatory/Inhibitory ratio
+    path = '../data/receptor/EI_ratio/february2022/EI_ratio_'+parcel+hemi+".npy" # noqa
+    if os.path.exists(path):
+        ANN['EI_ratio'] = np.load(path)
+
+    # Receptor density
+    path = '../data/receptor/mean_density/density_'+parcel+hemi+".npy"
+    if os.path.exists(path):
+        ANN['receptor_den'] = np.load(path)
+
+    # Receptor Principal Components
+    path = '../data/receptor/PCs/PCs_'+parcel+hemi+".npy"
+    if os.path.exists(path):
+        ANN['receptor_PCs'] = np.load(path)
 
     # Functional activation matrix
     path = mainPath+"../../neurosynth/parcellated/"+parcel+hemi+".npy"
