@@ -5,52 +5,63 @@ import numbers
 from netneurotools.plotting import plot_fsaverage
 from netneurotools.datasets import fetch_cammoun2012, fetch_schaefer2018
 from . import colors
+from .load_data import get_node_masks, get_general_parcellation_info
 from mpl_toolkits.mplot3d import Axes3D  # noqa
 import warnings
 
 
-def plot_brain_surface(values, network, hemi=None, cmap="viridis", alpha=0.8,
+def plot_brain_surface(values, brain, hemi=None, cmap="viridis", alpha=0.8,
                        colorbar=True, centered=False, vmin=None, vmax=None,
                        representation='surface'):
     '''
     Function to plot data on the brain, on a surface parcellation.
 
-    PARAMETERS
+    Parameters
     ----------
     values : ndarray (n,)
         Values to be plotted on the brain, where n is the number of nodes in
         the parcellation.
-    network : dictionary
-        Dictionary storing the network on associated with the values (to be
-        used to identify the adequate surface parcellation)
+    brain : str or dictionary
+        String describing the parcellation (e.g. {`68`, '114`, 's400`, etc.)
+        to be used or dictionary storing the network data associated with the
+        brainmap (to be used to identify the adequate surface parcellation).
     '''
 
-    cortical_hemi_mask = network['hemi_mask'][network['subcortex_mask'] == 0]
-    n = len(cortical_hemi_mask)
-
     if hemi is None:
-        hemi = network['info']['hemi']
+        hemi = brain['info']['hemi']
+
+    if isinstance(brain, dict):
+        cortical_hemi_mask = brain['hemi_mask'][brain['subcortex_mask'] == 0]
+        order = brain["order"]
+        noplot = brain["noplot"]
+        lh = brain["lhannot"]
+        rh = brain["rhannot"]
+    else:
+        _, hemi_mask, subcortex_mask = get_node_masks(None, N_hemi=hemi,
+                                                      N_parcel=brain)
+        cortical_hemi_mask = hemi_mask[subcortex_mask == 0]
+        parcel_info = get_general_parcellation_info(brain)
+        order = parcel_info[0]
+        noplot = parcel_info[1]
+        lh = parcel_info[2]
+        rh = parcel_info[3]
+    n = len(cortical_hemi_mask)
 
     if hemi == "L":
         scores = np.zeros((n))+np.mean(values)
-        scores[cortical_hemi_mask == 1] = values
+        scores[cortical_hemi_mask == 'L'] = values
         values = scores
     elif hemi == "R":
         scores = np.zeros((n))+np.mean(values)
-        scores[cortical_hemi_mask == 0] = values
+        scores[cortical_hemi_mask == 'R'] = values
         values = scores
-
-    order = network["order"]
-    noplot = network["noplot"]
-    lh = network["lhannot"]
-    rh = network["rhannot"]
 
     if os.path.isfile(lh) or os.path.isfile(rh) is False:
         fetch_cammoun2012(version='fsaverage')
         fetch_schaefer2018()
 
     # Adjust colormap based on parameters
-    if centered is True:
+    if centered:
         m = max(abs(np.amin(values)), np.amax(values))
         vmin = -m
         vmax = m

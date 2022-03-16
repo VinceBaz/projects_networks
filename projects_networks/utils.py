@@ -7,6 +7,7 @@ Last updated on : 2020/05/23
 
 import numpy as np
 import pickle
+from scipy.stats import pearsonr
 
 
 def mask(network, other_networks=None, with_diag=False, type="all"):
@@ -131,6 +132,22 @@ def isBipartite(A):
     # vertices can be colored with alternate
     # color
     return True
+
+
+def get_corr_spin_p(X, Y, spins):
+    '''
+    Function to compute the p-value of a correlation score compared to spun
+    distributions (for X)
+    '''
+
+    N_nodes, N_spins = spins.shape
+    emp_corr, _ = pearsonr(X, Y)
+    spin_corr = np.zeros((N_spins))
+    for i in range(N_spins):
+        spin_corr[i], _ = pearsonr(X[spins[:, i]], Y)
+    p_spin = get_p_value(spin_corr, emp_corr)
+
+    return p_spin
 
 
 def get_p_value(perm, emp):

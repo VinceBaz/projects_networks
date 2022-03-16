@@ -72,10 +72,10 @@ def load_network(kind, parcel, data="lau", weights='log', subset="all",
     hemi = '' if hemi == 'both' else hemi
 
     # Store important paths for loading the relevant data
-    main_path = path + "/brainNetworks/" + data + "/"
-    network_path = (main_path + "matrices/consensus/" + subset + kind +
-                    parcel + hemi + version + "/")
-    matrix_path = network_path + "/" + weights
+    main_path = f'{path}/brainNetworks/{data}/'
+    network_path = (f'{main_path}/matrices/consensus/{subset}{kind}{parcel}'
+                    f'{hemi}{version}/')
+    matrix_path = f'{network_path}/{weights}'
 
     # Store general information about the network's parcellation
     parcel_info = get_general_parcellation_info(parcel)
@@ -91,7 +91,7 @@ def load_network(kind, parcel, data="lau", weights='log', subset="all",
         Network['cammoun_id'] = parcel_to_n(parcel)
 
     # masks
-    masks = get_node_masks(Network, path=main_path)
+    masks = get_node_masks(Network)
     Network['node_mask'] = masks[0]
     Network['hemi_mask'] = masks[1]
     Network['subcortex_mask'] = masks[2]
@@ -273,6 +273,8 @@ def load_annotations(parcel, data="lau", hemi="both",
     info_path = mainPath + "/matrices/general_info"
     ANN = {}
 
+    node_mask, _, sub = get_node_masks(None, N_hemi=hemi, N_parcel=parcel)
+
     if subset == "all":
         subset = ''
 
@@ -311,18 +313,28 @@ def load_annotations(parcel, data="lau", hemi="both",
                                           order, info_path, hemi=hemi)
         np.save(path, ANN['spin'])
 
-    # Morphometric property (T1w/T2w)
+    # Morphometric property (T1w/T2w) | HCP Reinder
     path = mainPath+"annotations/T1wT2w/"+subset+"_"+parcel+hemi+".npy"
     if os.path.exists(path):
         ANN["t1t2"] = np.mean(np.load(path), axis=0)
 
-    # Morphometric property (Thickness)
+    # Morphometric property (Thickness) | HCP Reinder
     path = mainPath+"annotations/thi/"+subset+"_"+parcel+hemi+".npy"
     if os.path.exists(path):
         ANN["thi"] = np.mean(np.load(path), axis=0)
 
+    if data == 'lau':
+        # T1w/T2w (from neuromaps)
+        path = f"{mainPath}annotations/T1wT2w/{parcel_to_n(parcel)}.npy"
+        if os.path.exists(path):
+            ANN["t1t2"] = np.load(path)[np.delete(node_mask, sub)]
+        # Thickness (from neuromaps)
+        path = f"{mainPath}annotations/thi/{parcel_to_n(parcel)}.npy"
+        if os.path.exists(path):
+            ANN["thi"] = np.load(path)[np.delete(node_mask, sub)]
+
     # Receptor Excitatory/Inhibitory ratio
-    path = '../data/receptor/EI_ratio/february2022/EI_ratio_'+parcel+hemi+".npy" # noqa
+    path = f"../data/receptor/EI_ratio/{parcel}{hemi}.npy"
     if os.path.exists(path):
         ANN['EI_ratio'] = np.load(path)
 
@@ -423,7 +435,7 @@ def get_general_parcellation_info(parcel):
     home = os.path.expanduser("~")
 
     # Get the general information, for the Schaefer parcellations
-    if parcel[0] == "s":
+    if parcel.startswith('s'):
         n = parcel[1:]
         order = "LR"
         noplot = [b'Background+FreeSurfer_Defined_Medial_Wall',
@@ -474,8 +486,7 @@ def get_general_parcellation_info(parcel):
     return order, noplot, lhannot, rhannot, atlas, name
 
 
-def get_node_masks(N, N_hemi=None, N_data=None,
-                   N_parcel=None, path="../data/brainNetworks/lau"):
+def get_node_masks(N, N_hemi=None, N_parcel=None):
     '''
     Function to get a mask of the nodes of this particular network (1), given
     the original parcellation (0).
@@ -491,54 +502,38 @@ def get_node_masks(N, N_hemi=None, N_data=None,
     # Load info about the network
     if N_hemi is None:
         N_hemi = N['info']['hemi']
-    if N_data is None:
-        N_data = N['info']['data']
     if N_parcel is None:
         N_parcel = N['info']['parcel']
 
     # Load general info about hemispheres and subcortex
-    info_path = path + "/matrices/general_info"
-    hemi_mask = _load_hemi_info(N_parcel, info_path)
-    subcortex_nodes = _load_subcortex_info(N_parcel, info_path)
-
-    # Initialize node mask
-    n_nodes = len(hemi_mask)
-    node_mask = np.zeros((n_nodes), dtype=bool)
+    hemi_mask = _load_hemi_info(N_parcel)
+    subcortex_nodes = _load_subcortex_info(N_parcel)
 
     # Get subcortex mask
+    n_nodes = len(hemi_mask)
     subcortex_mask = np.zeros((n_nodes), dtype=bool)
     subcortex_mask[subcortex_nodes] = True
 
     # Figure out whether this parcellation contains the subcortex
     subcortex = False
-    if N_data == 'lau':
-        if N_parcel in ['83', '129', '234', '463', '1015']:
-            subcortex = True
+    if N_parcel in ['83', '129', '234', '463', '1015']:
+        subcortex = True
 
-    # Get a list of indices of the nodes in the network
+    # Create a node mask for the network
     if not subcortex:
-
         if N_hemi == 'L':
-            nodes = np.where((hemi_mask == 1) & (subcortex_mask == 0))[0]
-
+            node_mask = np.logical_and(hemi_mask == 'L', subcortex_mask == 0)
         elif N_hemi == 'R':
-            nodes = np.where((hemi_mask == 0) & (subcortex_mask == 0))[0]
-
+            node_mask = np.logical_and(hemi_mask == 'R', subcortex_mask == 0)
         elif N_hemi == 'both':
-            nodes = np.where((subcortex_mask == 0))[0]
-
+            node_mask = (subcortex_mask == 0)
     elif subcortex:
-
         if N_hemi == 'L':
-            nodes = np.where(hemi_mask == 1)[0]
-
+            node_mask = (hemi_mask == 'L')
         elif N_hemi == 'R':
-            nodes = np.where(hemi_mask == 0)[0]
-
+            node_mask = (hemi_mask == 'R')
         elif N_hemi == 'both':
-            nodes = np.ones((n_nodes), dtype=bool)
-
-    node_mask[nodes] = True
+            node_mask = np.ones((n_nodes), dtype=bool)
 
     return node_mask, hemi_mask, subcortex_mask
 
@@ -557,8 +552,7 @@ def get_hemi(Network, path="../data/brainNetworks/lau"):
     network_parcel = Network['info']['parcel']
 
     # Get information about hemispheres for the given parcellation
-    info_path = path + "/matrices/general_info"
-    hemi = _load_hemi_info(network_parcel, info_path)
+    hemi = _load_hemi_info(network_parcel)
 
     return hemi[mask]
 
@@ -781,29 +775,37 @@ def getPCs(A, n_components=10):
     return PCs, ev
 
 
-def _load_hemi_info(parcel, info_path):
+def _load_hemi_info(parcel):
 
-    with open(info_path+"/hemi.pkl", "rb") as handle:
-        hemi = pickle.load(handle)
-
-    if parcel[0] == "s":
-        hemi = hemi[parcel[1:]]
+    if parcel.startswith('s'):
+        parc_name = 'Schaefer2018'
+        scale = parcel[1:]
     else:
-        n = parcel_to_n(parcel)
-        hemi = hemi[n].reshape(-1)
+        parc_name = 'Cammoun2012'
+        scale = parcel_to_n(parcel)
+
+    file_dir = os.path.dirname(__file__)
+    csv = pd.read_csv((f"{file_dir}/data/parcellation_info/"
+                       f"{parc_name}_{scale}.csv"))
+    hemi = csv['hemisphere'].to_numpy(dtype='str')
 
     return hemi
 
 
-def _load_subcortex_info(parcel, info_path):
+def _load_subcortex_info(parcel):
 
-    with open(info_path+"/subcortexNodes.pkl", "rb") as handle:
-        subcortex = pickle.load(handle)
-
-    if parcel[0] == 's':
-        subcortex = subcortex[parcel[1:]]
+    if parcel.startswith('s'):
+        parc_name = 'Schaefer2018'
+        scale = parcel[1:]
     else:
-        n = parcel_to_n(parcel)
-        subcortex = subcortex[n]
+        parc_name = 'Cammoun2012'
+        scale = parcel_to_n(parcel)
+
+    file_dir = os.path.dirname(__file__)
+    csv = pd.read_csv((f"{file_dir}/data/parcellation_info/"
+                       f"{parc_name}_{scale}.csv"))
+    structure = csv['structure'].to_numpy(dtype='str')
+
+    subcortex = np.where(structure == 'subcortex')[0].tolist()
 
     return subcortex

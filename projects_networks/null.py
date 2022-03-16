@@ -3,6 +3,7 @@ import numpy as np
 from . import load_data
 from neuromaps.nulls import alexander_bloch
 from neuromaps.images import annot_to_gifti
+from projects_networks.assortativity import weighted_assort
 
 
 def assort_preserv_swap(A, M, g, epsilon=0.0001, und=True):
@@ -25,8 +26,59 @@ def assort_preserv_swap(A, M, g, epsilon=0.0001, und=True):
         Specifies whether the network is undirected (True) or directed (False).
     '''
 
+    # Get random edges
+    def get_random_edge(edges, N_edges):
+        not_found = True
+        while not_found:
+
+            not_found = False
+            rand1 = random.randrange(0, N_edges)
+            rand2 = random.randrange(0, N_edges)
+            e1 = [edges[rand1][0], edges[rand1][1]]
+            e2 = [edges[rand2][0], edges[rand2][1]]
+
+            # if swap creates a self-loop or a multiedge, resample
+            if e1[0] == e2[1] or e2[0] == e1[1]:
+                not_found = True
+            elif A[e1[0], e2[1]] > 0 or A[e2[0], e1[1]] > 0:
+                not_found = True
+
+        return rand1, rand2, e1, e2
+
+    # Swap edges
+    def swap_edges(A, e1, e2):
+        w1 = A[e1[0], e1[1]]
+        w2 = A[e2[0], e2[1]]
+        if und:
+            A[e1[0], e1[1]] = 0
+            A[e1[1], e1[0]] = 0
+            A[e2[0], e2[1]] = 0
+            A[e2[1], e2[0]] = 0
+            A[e1[0], e2[1]] = w1
+            A[e2[1], e1[0]] = w1
+            A[e2[0], e1[1]] = w2
+            A[e1[1], e2[0]] = w2
+        else:
+            A[e1[0], e1[1]] = 0
+            A[e2[0], e2[1]] = 0
+            A[e1[0], e2[1]] = w1
+            A[e2[0], e1[1]] = w2
+
+    # Update edge information
+    def update_edges(edges, rand1, rand2, e1, e2):
+        if und:
+            edges[rand1] = [e1[0], e2[1]]
+            edges[rand2] = [e2[0], e1[1]]
+
+            id1 = edges.index([e1[1], e1[0]])
+            id2 = edges.index([e2[1], e2[0]])
+            edges[id1] = [e2[1], e1[0]]
+            edges[id2] = [e1[1], e2[0]]
+        else:
+            edges[rand1] = [e1[0], e2[1]]
+            edges[rand2] = [e2[0], e1[1]]
+
     # Gather information about the network
-    N_nodes = len(A)
     sum_weights = np.sum(A, axis=None)
 
     # Gather information about the network's edges
@@ -36,99 +88,31 @@ def assort_preserv_swap(A, M, g, epsilon=0.0001, und=True):
     # Normalize network weights
     A = A / sum_weights
 
-    # Compute global assortativity
-    k_norm = np.sum(A, axis=0)
-    M_mean = np.sum(k_norm * M)
-    M_sd = np.sqrt(np.sum(k_norm * ((M-M_mean)**2)))
-    zM = (M - M_mean) / M_sd
-    zj = np.repeat(zM[np.newaxis, :], N_nodes, axis=0)
-    zi = zj.T
-    assort = (A * zi * zj).sum()
+    # diff with goal assort
+    diff = abs(weighted_assort(A, M, directed=(not und), normalize=False) - g)
 
-    # while assort is less than goal assort
+    # while diff with goal assort is larger than epsilon
     it = 0
-    diff = abs(assort - g)
     while diff > epsilon:
 
         it += 1
 
         # Choose 2 edges at random
-        rand1 = random.randrange(0, N_edges)
-        rand2 = random.randrange(0, N_edges)
-        e1 = [edges[rand1][0], edges[rand1][1]]
-        e2 = [edges[rand2][0], edges[rand2][1]]
+        rand1, rand2, e1, e2 = get_random_edge(edges, N_edges)
+        swap_edges(A, e1, e2)
 
-        # if swap creates a self-loop or a multiedge, resample
-        if e1[0] == e2[1] or e2[0] == e1[1]:
-            continue
-        elif A[e1[0], e2[1]] > 0 or A[e2[0], e1[1]] > 0:
-            continue
+        diff_new = abs(weighted_assort(A, M, directed=(not und),
+                                       normalize=False
+                                       ) - g)
+
+        # If swapped network has larger assortativity, keep swap
+        if diff_new < diff:
+            diff = diff_new
+            update_edges(edges, rand1, rand2, e1, e2)
+
+        # Else, swap back
         else:
-            # swap edges
-            w1 = A[e1[0], e1[1]]
-            w2 = A[e2[0], e2[1]]
-            if und:
-                A[e1[0], e1[1]] = 0
-                A[e1[1], e1[0]] = 0
-                A[e2[0], e2[1]] = 0
-                A[e2[1], e2[0]] = 0
-                A[e1[0], e2[1]] = w1
-                A[e2[1], e1[0]] = w1
-                A[e2[0], e1[1]] = w2
-                A[e1[1], e2[0]] = w2
-            else:
-                A[e1[0], e1[1]] = 0
-                A[e2[0], e2[1]] = 0
-                A[e1[0], e2[1]] = w1
-                A[e2[0], e1[1]] = w2
-
-            # Compute updated assortativity
-            k_norm = np.sum(A, axis=0)
-            M_mean = np.sum(k_norm * M)
-            M_sd = np.sqrt(np.sum(k_norm * ((M-M_mean)**2)))
-            zM = (M - M_mean) / M_sd
-            zj = np.repeat(zM[np.newaxis, :], N_nodes, axis=0)
-            zi = zj.T
-            assortNew = (A * zi * zj).sum()
-
-            diffNew = abs(assortNew - g)
-
-            # If swapped network has larger assortativity, keep swap
-            if diffNew < diff:
-
-                # Update assortativity and diff
-                assort = assortNew
-                diff = diffNew
-
-                # Update edge information
-                if und:
-                    edges[rand1] = [e1[0], e2[1]]
-                    edges[rand2] = [e2[0], e1[1]]
-
-                    edges.remove([e1[1], e1[0]])
-                    edges.remove([e2[1], e2[0]])
-                    edges.append([e2[1], e1[0]])
-                    edges.append([e1[1], e2[0]])
-                else:
-                    edges[rand1] = [e1[0], e2[1]]
-                    edges[rand2] = [e2[0], e1[1]]
-
-            # Else, swap back
-            else:
-                if und:
-                    A[e1[0], e1[1]] = w1
-                    A[e1[1], e1[0]] = w1
-                    A[e2[0], e2[1]] = w2
-                    A[e2[1], e2[0]] = w2
-                    A[e1[0], e2[1]] = 0
-                    A[e2[1], e1[0]] = 0
-                    A[e2[0], e1[1]] = 0
-                    A[e1[1], e2[0]] = 0
-                else:
-                    A[e1[0], e1[1]] = w1
-                    A[e2[0], e2[1]] = w2
-                    A[e1[0], e2[1]] = 0
-                    A[e2[0], e1[1]] = 0
+            swap_edges(A, [e1[0], e2[1]], [e2[0], e1[1]])
 
     # Unnormalize the weights
     A = A * sum_weights
@@ -136,7 +120,7 @@ def assort_preserv_swap(A, M, g, epsilon=0.0001, und=True):
     return A, it
 
 
-def generate_spins(parcel, info_path, hemi='', k=10000):
+def generate_spins(parcel, hemi='', k=10000):
     '''
     Function to generate spun permutation of a parcellation's parcels.
     '''
@@ -156,8 +140,8 @@ def generate_spins(parcel, info_path, hemi='', k=10000):
                                seed=1234)
 
     # Get some info about hemispheres and subcortex
-    hemi_info = load_data._load_hemi_info(parcel, info_path)
-    sub_info = load_data._load_subcortex_info(parcel, info_path)
+    hemi_info = load_data._load_hemi_info(parcel)
+    sub_info = load_data._load_subcortex_info(parcel)
 
     # Remove subcortex info from hemi_info (spins are only on the surface)
     hemi_info = np.delete(hemi_info, sub_info)

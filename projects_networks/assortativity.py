@@ -272,6 +272,14 @@ def weighted_assort(A, M, N=None, directed=False, normalize=True):
         Vector of nodal attributes.
     N : (n,) ndarray
         Second vector of nodal attributes (optional)
+    normalize: bool
+        If False, the adjacency weights won't be normalized to make its weights
+        sum to 1. This should only be set to False if the matrix has been
+        normalized already. Otherwise, the result will not be the assortativity
+        coefficent. This is useful when we want to compute the assortativity
+        of thousands annotations in a row. In that case, not having to
+        normalize the adjacency matrix each time makes the function much
+        faster.
 
     Returns
     -------
@@ -293,7 +301,7 @@ def weighted_assort(A, M, N=None, directed=False, normalize=True):
     sd_in = np.sqrt(np.sum(k_in * ((M-mean_in)**2)))
     z_in = (M - mean_in) / sd_in
 
-    # zscores of out-annotations (if directed or M is not None)
+    # zscores of out-annotations (if directed or N is not None)
     if N is not None:
         k_out = A.sum(axis=1)
         mean_out = np.sum(k_out * N)
@@ -328,16 +336,15 @@ def wei_assort_batch(A, M_all, N_all=None, n_batch=100, directed=False):
     ga = np.array([])
 
     # Create batches of annotations
-    if N_all is None:
-        if not directed:
-            M_batches = np.array_split(M_all, n_batch)
-        else:
-            N_all = True
-            M_batches = zip(np.array_split(M_all, n_batch),
-                            np.array_split(M_all, n_batch))
-    else:
+    if N_all is not None:
         M_batches = zip(np.array_split(M_all, n_batch),
                         np.array_split(N_all, n_batch))
+    elif directed:
+        N_all = True
+        M_batches = zip(np.array_split(M_all, n_batch),
+                        np.array_split(M_all, n_batch))
+    else:
+        M_batches = np.array_split(M_all, n_batch)
 
     # Normalize the adjacency matrix to make weights sum to 1
     A = A / A.sum(axis=None)
