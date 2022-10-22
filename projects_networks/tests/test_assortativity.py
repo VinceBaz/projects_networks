@@ -33,7 +33,7 @@ def test_weighted_assort():
                   [0, 1, 0, 0],
                   [1, 1, 1, 0]])
     M = np.array([1, 1, 1, 2])
-    assert np.isclose(assortativity.weighted_assort(A, M, directed=True),
+    assert np.isclose(weighted_assort(A, M, directed=True),
                       -0.25)
 
 

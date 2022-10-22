@@ -97,7 +97,7 @@ def load_network(kind, parcel, data="lau", weights='log', subset="all",
     Network['subcortex_mask'] = masks[2]
 
     # hemisphere
-    Network['hemi'] = get_hemi(Network, path=main_path)
+    Network['hemi'] = get_hemi(Network)
 
     # coordinates
     Network['coords'] = get_coordinates(Network, path=main_path)
@@ -314,12 +314,12 @@ def load_annotations(parcel, data="lau", hemi="both",
         np.save(path, ANN['spin'])
 
     # Morphometric property (T1w/T2w) | HCP Reinder
-    path = mainPath+"annotations/T1wT2w/"+subset+"_"+parcel+hemi+".npy"
+    path = mainPath+"annotations/T1wT2w/"+subset+parcel+hemi+".npy"
     if os.path.exists(path):
         ANN["t1t2"] = np.mean(np.load(path), axis=0)
 
     # Morphometric property (Thickness) | HCP Reinder
-    path = mainPath+"annotations/thi/"+subset+"_"+parcel+hemi+".npy"
+    path = mainPath+"annotations/thi/"+subset+parcel+hemi+".npy"
     if os.path.exists(path):
         ANN["thi"] = np.mean(np.load(path), axis=0)
 
@@ -334,12 +334,12 @@ def load_annotations(parcel, data="lau", hemi="both",
             ANN["thi"] = np.load(path)[np.delete(node_mask, sub)]
 
     # Receptor Excitatory/Inhibitory ratio
-    path = f"../data/receptor/EI_ratio/{parcel}{hemi}.npy"
+    path = f"../data/receptor/EI_ratio/{parcel}{hemi}_scaled_no_bg.npy"
     if os.path.exists(path):
         ANN['EI_ratio'] = np.load(path)
 
     # Receptor density
-    path = '../data/receptor/mean_density/density_'+parcel+hemi+".npy"
+    path = f'../data/receptor/mean_density/density_{parcel}{hemi}_scaled_no_bg.npy'
     if os.path.exists(path):
         ANN['receptor_den'] = np.load(path)
 
@@ -495,8 +495,12 @@ def get_node_masks(N, N_hemi=None, N_parcel=None):
     ----------
     N : dict
         Dictionary storing relevant information about the network of interest.
-
-
+    N_hemi: {'L', 'R', 'both'}
+        General hemisphere information associated with the network.
+        Default: {None}
+    N_parcel: str
+        General information about the parcellation associated with the network.
+        For instance: {'68', '114', '219', etc.}
     '''
 
     # Load info about the network
@@ -538,7 +542,7 @@ def get_node_masks(N, N_hemi=None, N_parcel=None):
     return node_mask, hemi_mask, subcortex_mask
 
 
-def get_hemi(Network, path="../data/brainNetworks/lau"):
+def get_hemi(Network, node_mask=None, network_parcel=None):
     '''
     Function to get hemisphere information for the nodes in the network.
     This hemispheric information is viewed as an annotation. In other words
@@ -546,10 +550,12 @@ def get_hemi(Network, path="../data/brainNetworks/lau"):
     our network's 'node_mask' to extract the nodes of interest)
     '''
     # Get node mask of network
-    mask = Network['node_mask']
+    if node_mask is None:
+        mask = Network['node_mask']
 
     # Get some information about the network of interest (HCP or lau)
-    network_parcel = Network['info']['parcel']
+    if network_parcel is None:
+        network_parcel = Network['info']['parcel']
 
     # Get information about hemispheres for the given parcellation
     hemi = _load_hemi_info(network_parcel)
@@ -733,7 +739,7 @@ def get_ROI_names(Network, path=None):
     return ROInames
 
 
-def getPCAgene(genes, scaled=True, return_scores=False):
+def getPCAgene(genes, scaled=True, return_scores=False, n_components=10):
     '''
     Function to compute the Principal components of our
     [genes x brain regions] matrix (see Burt et al., 2018).
@@ -755,7 +761,7 @@ def getPCAgene(genes, scaled=True, return_scores=False):
         scaler = StandardScaler()
         genes = scaler.fit_transform(genes)
 
-    pca = PCA(n_components=10)
+    pca = PCA(n_components=n_components)
     scores = pca.fit_transform(genes.T)
     ev = pca.explained_variance_ratio_
     PCs = pca.components_
@@ -782,7 +788,10 @@ def _load_hemi_info(parcel):
         scale = parcel[1:]
     else:
         parc_name = 'Cammoun2012'
-        scale = parcel_to_n(parcel)
+        try:
+            scale = parcel_to_n(parcel)
+        except KeyError:
+            scale = parcel
 
     file_dir = os.path.dirname(__file__)
     csv = pd.read_csv((f"{file_dir}/data/parcellation_info/"
@@ -799,7 +808,10 @@ def _load_subcortex_info(parcel):
         scale = parcel[1:]
     else:
         parc_name = 'Cammoun2012'
-        scale = parcel_to_n(parcel)
+        try:
+            scale = parcel_to_n(parcel)
+        except KeyError:
+            scale = parcel
 
     file_dir = os.path.dirname(__file__)
     csv = pd.read_csv((f"{file_dir}/data/parcellation_info/"

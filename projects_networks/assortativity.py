@@ -258,7 +258,7 @@ def global_assort(A, M, method="pearson", debugInfo=False):
         return rglobal, mean, norms, denominator
 
 
-def weighted_assort(A, M, N=None, directed=False, normalize=True):
+def weighted_assort(A, M, N=None, directed=True, normalize=True):
     '''
     Function to compute the weighted Pearson correlation between the attributes
     of the nodes connected by edges in a network (i.e. weighted assortativity).
@@ -272,6 +272,10 @@ def weighted_assort(A, M, N=None, directed=False, normalize=True):
         Vector of nodal attributes.
     N : (n,) ndarray
         Second vector of nodal attributes (optional)
+    directed: bool
+        Whether the network is directed or not. When the network is not
+        directed, setting this parameter to False will increase the speed of
+        the computations.
     normalize: bool
         If False, the adjacency weights won't be normalized to make its weights
         sum to 1. This should only be set to False if the matrix has been
@@ -316,7 +320,7 @@ def weighted_assort(A, M, N=None, directed=False, normalize=True):
     return ga
 
 
-def wei_assort_batch(A, M_all, N_all=None, n_batch=100, directed=False):
+def wei_assort_batch(A, M_all, N_all=None, n_batch=100, directed=True):
     '''
     Function to compute the weighted assortativity of a "batch" of attributes
     on a single network.
@@ -328,6 +332,11 @@ def wei_assort_batch(A, M_all, N_all=None, n_batch=100, directed=False):
     M_all : (m, n) ndarray
         Attributes
     n_batch: int
+        Number of attribute in each batch.
+    directed: bool
+        Whether the network is directed or not. When the network is not
+        directed, setting this parameter to False will increase the speed of
+        the computations.
 
     Returns
     -------

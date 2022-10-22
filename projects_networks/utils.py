@@ -8,6 +8,7 @@ Last updated on : 2020/05/23
 import numpy as np
 import pickle
 from scipy.stats import pearsonr
+from projects_networks import load_data
 
 
 def mask(network, other_networks=None, with_diag=False, type="all"):
@@ -151,14 +152,37 @@ def get_corr_spin_p(X, Y, spins):
 
 
 def get_p_value(perm, emp):
+    '''
+    Utility function to compute the p-value of a score, relative to a null
+    distribution
+
+    Parameters
+    ----------
+    perm: array-like
+        Null distribution of (permuted) scores.
+    emp: float
+        Empirical score.
+    '''
 
     k = len(perm)
     return len(np.where(abs(perm-np.mean(perm)) > abs(emp-np.mean(perm)))[0])/k
 
 
-def standardize_scores(perm, emp, axis=None):
+def standardize_scores(surr, emp, axis=None, ignore_nan=False):
+    '''
+    Utility function to standardize a score relative to a null distribution.
 
-    return (emp - perm.mean(axis=axis)) / perm.std(axis=axis)
+    Parameters
+    ----------
+    perm: array-like
+        Null distribution of scores.
+    emp: float
+        Empirical score.
+    '''
+    if ignore_nan:
+        return (emp - np.nanmean(surr, axis=axis)) / np.nanstd(surr, axis=axis)
+    else:
+        return (emp - surr.mean(axis=axis)) / surr.std(axis=axis)
 
 
 def load_pickle(path):
@@ -173,3 +197,47 @@ def save_pickle(data, path):
 
     with open(path, 'wb') as handle:
         pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def split_matrix_hemi(A, parc):
+    '''
+    Function to split the inter-hemispheric data of a matrix.
+    '''
+
+    node_mask, hemi_mask, _ = load_data.get_node_masks(
+        None, N_hemi='both', N_parcel=parc)
+    hemi_labels = hemi_mask[node_mask]
+
+    A_left = A[hemi_labels == 'L', :][:, hemi_labels == 'L']
+    A_right = A[hemi_labels == 'R', :][:, hemi_labels == 'R']
+
+    return A_left, A_right
+
+
+def multi_pearsonr(X, Y):
+    '''
+    Function to compute the pearson's correlation between a distribution `X`
+    and a large number of distributions, stored in the matrix `Y`.
+
+    Parameters
+    ----------
+    X : (n,) ndarray
+        Vector of n observation.
+    Y: (n, k) ndarray
+        Matrix, where each column is a vector of correlation that we want to
+        correlate with X.
+
+    Returns
+    -------
+    R : (k,) ndarray
+        Vector of Pearson's r scores representing the correlation between the
+        independent variable and all the dependent variables
+    '''
+
+    n, k = Y.shape
+    X_z = (X - X.mean()) / X.std()
+    Y_z = (Y - Y.mean(axis=0)) / Y.std(axis=0)
+    X_z_repeat = np.repeat(X_z[:, np.newaxis], k, axis=1)
+    R = np.mean(X_z_repeat * Y_z, axis=0)
+
+    return R
